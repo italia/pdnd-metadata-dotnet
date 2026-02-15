@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="Pdnd.Metadata.SampleApi/Pdnd.Metadata.SampleApi.csproj" Id="4857600c-d5ba-463c-ae47-e9f06abde02f" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="../Pdnd.Metadata.AspNetCore/Pdnd.Metadata.AspNetCore.csproj" />
+    <Project Path="../Pdnd.Metadata/Pdnd.Metadata.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="Pdnd.Metadata.Tests/Pdnd.Metadata.Tests.csproj" Id="731aa7c1-1d42-4371-9772-f0cedb196c4b" />
+  </Folder>
+</Solution>

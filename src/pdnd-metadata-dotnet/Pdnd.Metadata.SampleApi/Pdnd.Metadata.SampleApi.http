@@ -1,0 +1,6 @@
+@Pdnd.Metadata.SampleApi_HostAddress = http://localhost:5041
+
+GET {{Pdnd.Metadata.SampleApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
