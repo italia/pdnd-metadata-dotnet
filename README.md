@@ -1,6 +1,11 @@
 # Pdnd.Metadata
 
-**Pdnd.Metadata** is a lightweight .NET library designed to extract **request metadata** from inbound HTTP calls in a consistent, transport-agnostic format, with dedicated support for **PDND** scenarios (voucher, tracking evidence, digest, DPoP) and standard correlation/tracing signals.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![issues - pdndmetadata](https://img.shields.io/github/issues/engineering87/pdnd-metadata-dotnet)](https://github.com/engineering87/pdnd-metadata-dotnet/issues)
+[![stars - pdndmetadata](https://img.shields.io/github/stars/engineering87/pdnd-metadata-dotnet?style=social)](https://github.com/engineering87/pdnd-metadata-dotnet)
+[![Sponsor me](https://img.shields.io/badge/Sponsor-❤-pink)](https://github.com/sponsors/engineering87)
+
+**Pdnd.Metadata** is a lightweight .NET library designed to extract **request metadata** from inbound HTTP calls in a consistent, HTTP-transport-agnostic format, with dedicated support for **PDND** scenarios (voucher, tracking evidence, digest, DPoP) and standard correlation/tracing signals.
 
 The library targets a very practical need: when you expose an e-service as a **provider (erogatore)**, you often need to understand *who is calling*, *with what PDND context*, and *how the call can be correlated and audited*, without sprinkling ad-hoc header parsing across controllers, minimal APIs, and middleware.
 
@@ -9,7 +14,7 @@ The library targets a very practical need: when you expose an e-service as a **p
 | Section | What you’ll find |
 |---|---|
 | [Why this library exists](#why-this-library-exists) | The problem it solves in real provider services |
-| [PDND overview](#pdnd-interoperabilita-overview) | What PDND is and why the inbound request carries tokens |
+| [PDND overview](#pdnd-overview) | What PDND is and why the inbound request carries tokens |
 | [What Pdnd.Metadata does](#what-pdndmetadata-does) | Responsibilities, data model, and boundaries |
 | [Extracted fields](#extracted-fields) | Canonical keys produced by the extractor (generic + PDND-specific) |
 | [Safety model](#safety-model) | What is never stored, fail-soft behavior, recommended defaults |
@@ -40,13 +45,13 @@ In provider services, metadata extraction tends to grow organically:
 
 - `Authorization: Bearer <voucher>`
 
-Official reference: voucher usage. ([developer.pagopa.it](https://www.developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher?utm_source=chatgpt.com))
+Official reference: voucher usage. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher))
 
-For some e-services, additional information is carried through a **Tracking Evidence** token in a dedicated header. Official reference: “voucher bearer … con informazioni aggiuntive”. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/tutorial/tutorial-per-il-fruitore/come-richiedere-un-voucher-bearer-per-le-api-di-un-erogatore-con-informazioni-aggiuntive?utm_source=chatgpt.com))
+For some e-services, additional information is carried through a **Tracking Evidence** token in a dedicated header. Official reference: “voucher bearer … con informazioni aggiuntive”. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/tutorial/tutorial-per-il-fruitore/come-richiedere-un-voucher-bearer-per-le-api-di-un-erogatore-con-informazioni-aggiuntive))
 
-PDND guidance also includes **tracing** (W3C trace context) as part of observability and monitoring practices. Official reference: tracing technical reference. ([developer.pagopa.it](https://www.developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/tracing?utm_source=chatgpt.com))
+The library also captures standard correlation/tracing signals commonly used in modern HTTP services (e.g., W3C Trace Context). PDND provides guidance on tracing/observability practices for interoperability monitoring. Official reference: tracing manual. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-tracing))
 
-Finally, the platform evolves over time and includes **DPoP** flows (proof-of-possession) in its documentation and release notes. Official references: PDND guides hub and release notes. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides?utm_source=chatgpt.com)) ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/release-note/2025?utm_source=chatgpt.com))
+Finally, the platform includes **DPoP** flows (proof-of-possession). Official reference: DPoP deep dive. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
 
 ## What Pdnd.Metadata does
 
@@ -84,6 +89,8 @@ The snapshot is a `PdndCallerMetadata` containing items indexed by canonical key
 - `trace.traceparent`, `trace.tracestate`, `trace.baggage`
 - `http.header.<lowercase-name>` (only if header capture is enabled and the header is not denied)
 
+> Note on forwarded headers: values like `Forwarded` / `X-Forwarded-For` are trustworthy only if they are set by a trusted reverse proxy / API gateway. In open networks they are user-controllable and must not be treated as authoritative identity signals.
+
 ### PDND keys
 
 #### Voucher (from `Authorization: Bearer ...`)
@@ -95,25 +102,27 @@ The snapshot is a `PdndCallerMetadata` containing items indexed by canonical key
 - `pdnd.voucher.purposeId` (if present)
 - `pdnd.voucher.clientId` (if present)
 
-Reference: voucher usage and semantics. ([developer.pagopa.it](https://www.developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher?utm_source=chatgpt.com))
+Reference: voucher usage and semantics. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher))
 
 #### Tracking Evidence (from `Agid-JWT-Tracking-Evidence` / `AgID-JWT-TrackingEvidence`)
 - `pdnd.trackingEvidence.alg`, `pdnd.trackingEvidence.kid`, `pdnd.trackingEvidence.typ`
 - `pdnd.trackingEvidence.iss`, `pdnd.trackingEvidence.sub`, `pdnd.trackingEvidence.jti` (when present)
 
-Reference: additional-information flows. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/tutorial/tutorial-per-il-fruitore/come-richiedere-un-voucher-bearer-per-le-api-di-un-erogatore-con-informazioni-aggiuntive?utm_source=chatgpt.com))
+**Compatibility note:** in PDND documentation the header name appears in two variants (`Agid-JWT-Tracking-Evidence` and `AgID-JWT-TrackingEvidence`). The extractor supports both for interoperability.
+
+Reference: additional-information flows. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/tutorial/tutorial-per-il-fruitore/come-richiedere-un-voucher-bearer-per-le-api-di-un-erogatore-con-informazioni-aggiuntive))
 
 #### Digest (from `Digest`)
 - `pdnd.digest.alg`
 - `pdnd.digest.value`
 
-Reference: digest notes in voucher FAQ. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/PDND-Interoperability-Operating-Manual/technical-references/utilizzare-i-voucher/faqs?utm_source=chatgpt.com))
+Reference: digest notes in voucher FAQ. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/PDND-Interoperability-Operating-Manual/technical-references/utilizzare-i-voucher/faqs))
 
 #### DPoP (from `DPoP`)
 - `pdnd.dpop.alg`, `pdnd.dpop.kid`, `pdnd.dpop.typ`
 - `pdnd.dpop.htm`, `pdnd.dpop.htu`, `pdnd.dpop.jti`, `pdnd.dpop.iat` (when present)
 
-Reference: platform documentation hub and evolution via release notes. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides?utm_source=chatgpt.com)) ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/release-note/2025?utm_source=chatgpt.com))
+Reference: DPoP deep dive. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
 
 ## Safety model
 
@@ -149,16 +158,27 @@ Capturing headers can still collect sensitive data if your service (or gateways)
 
 ## Quick start (ASP.NET Core)
 
-### 1) Register services
+### 1) Register services (production-first)
 
-<CODE>
+Prefer an allow-list approach: capture only what you need (trace/correlation/forwarded + explicit PDND headers if you decide to persist them as raw headers).
+
+```csharp
 builder.Services.AddPdndMetadata(options =>
 {
-    // Demo-friendly; in production prefer CaptureAllHeaders = false
-    // and a strict allow-list (see "Recommended production configuration").
-    options.CaptureAllHeaders = true;
+    options.CaptureAllHeaders = false;
+
+    // Recommended: allow-list only non-sensitive headers used for correlation/tracing
+    // (and any other header you explicitly govern).
+    options.HeaderAllowList.Add("traceparent");
+    options.HeaderAllowList.Add("tracestate");
+    options.HeaderAllowList.Add("baggage");
+    options.HeaderAllowList.Add("x-request-id");
+    options.HeaderAllowList.Add("x-correlation-id");
+    options.HeaderAllowList.Add("forwarded");
+    options.HeaderAllowList.Add("x-forwarded-for");
 
     // PDND parsing (best-effort, no validation)
+    // Parsing reads the relevant headers even if you are not capturing raw headers.
     options.ParsePdndVoucherFromAuthorizationBearer = true;
     options.ParsePdndTrackingEvidence = true;
     options.ParseDpopHeader = true;
@@ -171,19 +191,40 @@ builder.Services.AddPdndMetadata(options =>
     // Guard-rail
     options.MaxTokenLength = 16_384;
 });
-</CODE>
+```
+
+### Demo mode (local only)
+
+If you want to inspect headers during local development, you can temporarily enable full capture:
+
+```csharp
+builder.Services.AddPdndMetadata(options =>
+{
+    options.CaptureAllHeaders = true;
+
+    options.ParsePdndVoucherFromAuthorizationBearer = true;
+    options.ParsePdndTrackingEvidence = true;
+    options.ParseDpopHeader = true;
+    options.ParseDigestHeader = true;
+
+    options.CaptureRawTrackingEvidenceHeader = false;
+    options.CaptureRawDpopHeader = false;
+
+    options.MaxTokenLength = 16_384;
+});
+```
 
 ### 2) Add middleware
 
 Place it before endpoint mapping so every request gets a snapshot.
 
-<CODE>
+```csharp
 app.UsePdndMetadata();
-</CODE>
+```
 
 ### 3) Consume metadata (Controllers)
 
-<CODE>
+```csharp
 [HttpGet("/controller/metadata")]
 public IActionResult Get([FromServices] IPdndMetadataAccessor accessor)
 {
@@ -196,11 +237,11 @@ public IActionResult Get([FromServices] IPdndMetadataAccessor accessor)
         dpopHtu = md?.GetFirstValue(PdndMetadataKeys.PdndDpopHtu)
     });
 }
-</CODE>
+```
 
 ### 4) Consume metadata (Minimal APIs)
 
-<CODE>
+```csharp
 app.MapGet("/minimal/pdnd", (PdndCallerMetadataParameter pdnd) =>
 {
     var md = pdnd.Value;
@@ -229,7 +270,7 @@ app.MapGet("/minimal/pdnd", (PdndCallerMetadataParameter pdnd) =>
         }
     });
 });
-</CODE>
+```
 
 ## Recommended production configuration
 
@@ -237,7 +278,7 @@ For production services, it’s usually better to explicitly decide *which heade
 
 A conservative approach:
 - `CaptureAllHeaders = false`
-- keep a strict `HeaderAllowList` (trace + correlation + forwarded + the PDND headers you explicitly require)
+- keep a strict `HeaderAllowList` (trace + correlation + forwarded + only what you explicitly govern)
 - keep `CaptureRawTrackingEvidenceHeader = false` and `CaptureRawDpopHeader = false`
 - consider disabling `CaptureRawDigestHeader` unless you actually need it
 - in logging/auditing pipelines, avoid persisting the full `items` map unless you are confident about governance; prefer logging only canonical keys you whitelist
@@ -256,14 +297,14 @@ The sample project is meant to let you validate integration quickly, without log
 
 Example request (fake tokens are sufficient for extraction checks):
 
-<CODE>
+```bash
 curl \
   -H "Authorization: Bearer <jwt>" \
   -H "Agid-JWT-Tracking-Evidence: <jws>" \
   -H "DPoP: <dpop-jws>" \
   -H "Digest: SHA-256=<base64>" \
   http://localhost:5043/minimal/pdnd
-</CODE>
+```
 
 ## What this library does not do
 
@@ -276,13 +317,28 @@ This is intentionally an extraction layer, not a security enforcement layer.
 
 If you need validation/enforcement, place it in your auth layer (gateway/service middleware) and use Pdnd.Metadata strictly as an observability/diagnostics/audit-friendly snapshot.
 
----
-
 ## Official PDND references
 
-- PDND Interoperabilità – Guides hub ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides?utm_source=chatgpt.com))
-- Voucher (usage) ([developer.pagopa.it](https://www.developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher?utm_source=chatgpt.com))
-- Voucher with additional information (Tracking Evidence) ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/tutorial/tutorial-per-il-fruitore/come-richiedere-un-voucher-bearer-per-le-api-di-un-erogatore-con-informazioni-aggiuntive?utm_source=chatgpt.com))
-- Voucher FAQ / Digest field notes ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/PDND-Interoperability-Operating-Manual/technical-references/utilizzare-i-voucher/faqs?utm_source=chatgpt.com))
-- Tracing ([developer.pagopa.it](https://www.developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/tracing?utm_source=chatgpt.com))
-- Release notes (platform evolution including DPoP) ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/release-note/2025?utm_source=chatgpt.com))
+- PDND Interoperabilità – Guides hub ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides))
+- Voucher (usage) ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher))
+- Voucher with additional information (Tracking Evidence) ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/tutorial/tutorial-per-il-fruitore/come-richiedere-un-voucher-bearer-per-le-api-di-un-erogatore-con-informazioni-aggiuntive))
+- Voucher FAQ / Digest field notes ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/PDND-Interoperability-Operating-Manual/technical-references/utilizzare-i-voucher/faqs))
+- Tracing – Manuale Operativo ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-tracing))
+- DPoP deep dive ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
+- Release notes ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/release-note/2025))
+
+### Contributing
+Thank you for considering to help out with the source code!
+If you'd like to contribute, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base.
+
+**Getting started with Git and GitHub**
+
+ * [Setting up Git](https://docs.github.com/en/get-started/getting-started-with-git/set-up-git)
+ * [Fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
+ * [Open an issue](https://github.com/engineering87/pdnd-metadata-dotnet/issues) if you encounter a bug or have a suggestion for improvements/features
+
+## License
+Pdnd.Metadata source code is available under MIT License, see license in the source.
+
+## Contact
+Please contact at francesco.delre[at]protonmail.com for any details.
