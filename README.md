@@ -3,6 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![issues - pdndmetadata](https://img.shields.io/github/issues/engineering87/pdnd-metadata-dotnet)](https://github.com/engineering87/pdnd-metadata-dotnet/issues)
 [![stars - pdndmetadata](https://img.shields.io/github/stars/engineering87/pdnd-metadata-dotnet?style=social)](https://github.com/engineering87/pdnd-metadata-dotnet)
+[![EN](https://img.shields.io/badge/lang-en-blue)](./README.md)
+[![IT](https://img.shields.io/badge/lang-it-green)](./README.it.md)
 [![Sponsor me](https://img.shields.io/badge/Sponsor-❤-pink)](https://github.com/sponsors/engineering87)
 
 **Pdnd.Metadata** is a lightweight .NET library designed to extract **request metadata** from inbound HTTP calls in a consistent, HTTP-transport-agnostic format, with dedicated support for **PDND** scenarios (voucher, tracking evidence, digest, DPoP) and standard correlation/tracing signals.
