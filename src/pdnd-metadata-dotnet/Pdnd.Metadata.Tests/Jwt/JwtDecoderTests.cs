@@ -51,21 +51,20 @@ public class JwtDecoderTests
     [Theory]
     [InlineData("..")]
     [InlineData(".abc.")]
+    [InlineData("abc..def")]
     public void TryDecode_ShouldReturnFalse_ForClearlyMalformedToken(string token)
     {
         JwtDecoder.TryDecode(token, out _).Should().BeFalse();
     }
 
     [Fact]
-    public void TryDecode_ShouldIgnoreEmptySegments_WhenHeaderAndPayloadAreValid()
+    public void TryDecode_ShouldReturnFalse_WhenSegmentsBetweenDotsAreEmpty()
     {
-        // Build a valid 2-part token, then inject an empty middle segment: "header..payload"
+        // "header..payload" has an empty second segment — invalid JWT structure
         var header = Base64UrlTestHelper.EncodeUtf8("{\"alg\":\"none\"}");
         var payload = Base64UrlTestHelper.EncodeUtf8("{\"iss\":\"x\"}");
         var token = $"{header}..{payload}";
 
-        JwtDecoder.TryDecode(token, out var parts).Should().BeTrue();
-        parts.HeaderJson.Should().Contain("\"alg\"");
-        parts.PayloadJson.Should().Contain("\"iss\"");
+        JwtDecoder.TryDecode(token, out _).Should().BeFalse();
     }
 }

@@ -49,21 +49,46 @@ public sealed class PdndMetadataOptions
         "DPoP"
     };
 
+    private int _maxHeaderValuesPerName = 10;
+    private int _maxValueLength = 2048;
+    private int _maxTokenLength = 16_384;
+
     /// <summary>
     /// Gets or sets the maximum number of values per header to capture.
+    /// Must be at least 1.
     /// </summary>
-    public int MaxHeaderValuesPerName { get; set; } = 10;
+    public int MaxHeaderValuesPerName
+    {
+        get => _maxHeaderValuesPerName;
+        set => _maxHeaderValuesPerName = value < 1
+            ? throw new ArgumentOutOfRangeException(nameof(MaxHeaderValuesPerName), value, "Value must be at least 1.")
+            : value;
+    }
 
     /// <summary>
     /// Gets or sets the maximum length for a captured value. Longer values are truncated.
+    /// Must be at least 1.
     /// </summary>
-    public int MaxValueLength { get; set; } = 2048;
+    public int MaxValueLength
+    {
+        get => _maxValueLength;
+        set => _maxValueLength = value < 1
+            ? throw new ArgumentOutOfRangeException(nameof(MaxValueLength), value, "Value must be at least 1.")
+            : value;
+    }
 
     /// <summary>
     /// Gets or sets a maximum length for JWT/JWS-like tokens to be decoded.
     /// This prevents best-effort parsing from processing unusually large inputs.
+    /// Must be at least 1.
     /// </summary>
-    public int MaxTokenLength { get; set; } = 16_384;
+    public int MaxTokenLength
+    {
+        get => _maxTokenLength;
+        set => _maxTokenLength = value < 1
+            ? throw new ArgumentOutOfRangeException(nameof(MaxTokenLength), value, "Value must be at least 1.")
+            : value;
+    }
 
     /// <summary>
     /// Gets or sets whether well-known tracing headers should be promoted to canonical keys.

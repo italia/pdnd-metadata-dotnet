@@ -22,8 +22,11 @@ public static class JwtDecoder
         if (string.IsNullOrWhiteSpace(token))
             return false;
 
-        var segments = token.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length < 2)
+        var segments = token.Split('.');
+        if (segments.Length < 2 || segments.Length > 5)
+            return false;
+
+        if (string.IsNullOrEmpty(segments[0]) || string.IsNullOrEmpty(segments[1]))
             return false;
 
         if (!TryBase64UrlDecodeToUtf8(segments[0], out var headerJson))
@@ -42,9 +45,11 @@ public static class JwtDecoder
     {
         utf8 = string.Empty;
 
+        if (!TryBase64UrlDecode(base64Url, out var bytes))
+            return false;
+
         try
         {
-            var bytes = Base64UrlDecode(base64Url);
             utf8 = Encoding.UTF8.GetString(bytes);
             return true;
         }
@@ -54,8 +59,9 @@ public static class JwtDecoder
         }
     }
 
-    private static byte[] Base64UrlDecode(string input)
+    private static bool TryBase64UrlDecode(string input, out byte[] result)
     {
+        result = Array.Empty<byte>();
         var s = input.Replace('-', '+').Replace('_', '/');
 
         switch (s.Length % 4)
@@ -63,9 +69,17 @@ public static class JwtDecoder
             case 0: break;
             case 2: s += "=="; break;
             case 3: s += "="; break;
-            default: throw new FormatException("Invalid Base64Url length.");
+            default: return false;
         }
 
-        return Convert.FromBase64String(s);
+        try
+        {
+            result = Convert.FromBase64String(s);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

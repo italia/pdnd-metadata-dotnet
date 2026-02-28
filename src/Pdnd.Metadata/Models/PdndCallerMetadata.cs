@@ -1,7 +1,5 @@
 ﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
-using System.Collections.ObjectModel;
-
 namespace Pdnd.Metadata.Models;
 
 /// <summary>
@@ -15,15 +13,23 @@ public sealed class PdndCallerMetadata
     /// <summary>
     /// Gets the UTC timestamp when this metadata snapshot was created.
     /// </summary>
-    public DateTimeOffset CreatedAtUtc { get; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAtUtc { get; }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="PdndCallerMetadata"/>.
+    /// </summary>
+    public PdndCallerMetadata() => CreatedAtUtc = DateTimeOffset.UtcNow;
+
+    private PdndCallerMetadata(DateTimeOffset createdAtUtc) => CreatedAtUtc = createdAtUtc;
 
     /// <summary>
     /// Gets a read-only view of all metadata items grouped by key.
+    /// Each call returns a snapshot; items added after the call are not reflected.
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<PdndMetadataItem>> Items
         => _items.ToDictionary(
             kvp => kvp.Key,
-            kvp => (IReadOnlyList<PdndMetadataItem>)new ReadOnlyCollection<PdndMetadataItem>(kvp.Value),
+            kvp => (IReadOnlyList<PdndMetadataItem>)kvp.Value.ToArray(),
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -90,7 +96,7 @@ public sealed class PdndCallerMetadata
     /// <returns>A new <see cref="PdndCallerMetadata"/> containing the same items.</returns>
     public PdndCallerMetadata Clone()
     {
-        var clone = new PdndCallerMetadata();
+        var clone = new PdndCallerMetadata(CreatedAtUtc);
         foreach (var kvp in _items)
         {
             foreach (var item in kvp.Value)

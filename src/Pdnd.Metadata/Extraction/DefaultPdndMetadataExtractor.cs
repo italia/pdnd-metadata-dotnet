@@ -252,5 +252,5 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
     }
 
     private static string Truncate(string value, int maxLen)
-        => value.Length <= maxLen ? value : value.Substring(0, maxLen);
+        => maxLen <= 0 ? string.Empty : value.Length <= maxLen ? value : value.Substring(0, maxLen);
 }
