@@ -15,9 +15,9 @@ public static class JwtDecoder
     /// <param name="token">The token string.</param>
     /// <param name="parts">Decoded token parts if successful.</param>
     /// <returns><c>true</c> if decoding succeeds; otherwise <c>false</c>.</returns>
-    public static bool TryDecode(string token, out JwtParts parts)
+    public static bool TryDecode(string token, out JwtParts? parts)
     {
-        parts = default!;
+        parts = null;
 
         if (string.IsNullOrWhiteSpace(token))
             return false;

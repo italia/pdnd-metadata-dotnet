@@ -17,6 +17,9 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
     /// <inheritdoc />
     public PdndCallerMetadata Extract(PdndRequestContext context, PdndMetadataOptions options)
     {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(options);
+
         var md = new PdndCallerMetadata();
 
         // Basic HTTP info
@@ -98,7 +101,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(bearerToken, options) &&
                 JwtDecoder.TryDecode(bearerToken!, out var jwt))
             {
-                PdndVoucherClaimsExtractor.Extract(md, jwt); // fail-soft internally
+                PdndVoucherClaimsExtractor.Extract(md, jwt!); // fail-soft internally
             }
         }
 
@@ -112,7 +115,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(te, options) &&
                 JwtDecoder.TryDecode(te!, out var jws))
             {
-                PdndTrackingEvidenceExtractor.Extract(md, jws); // fail-soft internally
+                PdndTrackingEvidenceExtractor.Extract(md, jws!); // fail-soft internally
             }
         }
 
@@ -124,7 +127,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(dpop, options) &&
                 JwtDecoder.TryDecode(dpop!, out var proof))
             {
-                PdndDpopExtractor.Extract(md, proof); // fail-soft internally
+                PdndDpopExtractor.Extract(md, proof!); // fail-soft internally
             }
         }
 
@@ -248,7 +251,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
     private static string? GetHeaderFirst(PdndRequestContext context, string name)
     {
         var header = context.Headers.FirstOrDefault(h => name.Equals(h.Name, StringComparison.OrdinalIgnoreCase));
-        return header?.Values.FirstOrDefault();
+        return header?.Values?.FirstOrDefault();
     }
 
     private static string Truncate(string value, int maxLen)

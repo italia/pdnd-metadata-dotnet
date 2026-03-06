@@ -33,7 +33,7 @@ public static class DigestParser
             var alg = part.Substring(0, eq).Trim();
             var val = part.Substring(eq + 1).Trim().Trim('"');
 
-            if (string.IsNullOrWhiteSpace(alg) || string.IsNullOrWhiteSpace(val))
+            if (string.IsNullOrWhiteSpace(alg) || alg.Contains(' ') || string.IsNullOrWhiteSpace(val))
                 continue;
 
             algorithm = alg;
