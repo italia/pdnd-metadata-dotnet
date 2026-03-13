@@ -83,8 +83,11 @@ public static class PdndMetadataKeys
     /// <summary>Voucher purposeId claim (if present).</summary>
     public const string PdndVoucherPurposeId = "pdnd.voucher.purposeId";
 
-    /// <summary>Voucher client id / subject-like identifier (if present).</summary>
+    /// <summary>Voucher client id / subject-like identifier (camelCase, if present).</summary>
     public const string PdndVoucherClientId = "pdnd.voucher.clientId";
+
+    /// <summary>Voucher client_id (OAuth 2.0 standard underscore form, if present).</summary>
+    public const string PdndVoucherClientIdUnderscore = "pdnd.voucher.client_id";
 
     /// <summary>Tracking evidence JWS/JWT header alg.</summary>
     public const string PdndTrackingAlg = "pdnd.trackingEvidence.alg";
@@ -103,6 +106,15 @@ public static class PdndMetadataKeys
 
     /// <summary>Tracking evidence payload jti (if present).</summary>
     public const string PdndTrackingJti = "pdnd.trackingEvidence.jti";
+
+    /// <summary>Tracking evidence payload audience (if present).</summary>
+    public const string PdndTrackingAud = "pdnd.trackingEvidence.aud";
+
+    /// <summary>Tracking evidence payload issued at (if present).</summary>
+    public const string PdndTrackingIat = "pdnd.trackingEvidence.iat";
+
+    /// <summary>Tracking evidence payload expiration (if present).</summary>
+    public const string PdndTrackingExp = "pdnd.trackingEvidence.exp";
 
     /// <summary>Normalized Digest algorithm (best-effort).</summary>
     public const string PdndDigestAlg = "pdnd.digest.alg";

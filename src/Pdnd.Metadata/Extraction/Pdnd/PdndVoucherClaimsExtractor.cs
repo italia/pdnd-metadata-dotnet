@@ -38,6 +38,7 @@ public static class PdndVoucherClaimsExtractor
 
             AddIfPresent(metadata, root, "purposeId", PdndMetadataKeys.PdndVoucherPurposeId);
             AddIfPresent(metadata, root, "clientId", PdndMetadataKeys.PdndVoucherClientId);
+            AddIfPresent(metadata, root, "client_id", PdndMetadataKeys.PdndVoucherClientIdUnderscore);
         }
         catch
         {

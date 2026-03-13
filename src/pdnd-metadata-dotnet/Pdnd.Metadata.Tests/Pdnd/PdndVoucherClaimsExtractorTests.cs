@@ -26,7 +26,8 @@ public class PdndVoucherClaimsExtractorTests
                            "nbf":1700000001,
                            "exp":1700000002,
                            "purposeId":"p1",
-                           "clientId":"c1"
+                           "clientId":"c1",
+                           "client_id":"c2"
                          }
                          """,
             SignatureBase64Url: null);
@@ -42,6 +43,7 @@ public class PdndVoucherClaimsExtractorTests
         md.GetFirstValue(PdndMetadataKeys.PdndVoucherExp).Should().Be("1700000002");
         md.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId).Should().Be("p1");
         md.GetFirstValue(PdndMetadataKeys.PdndVoucherClientId).Should().Be("c1");
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherClientIdUnderscore).Should().Be("c2");
     }
 
     [Fact]

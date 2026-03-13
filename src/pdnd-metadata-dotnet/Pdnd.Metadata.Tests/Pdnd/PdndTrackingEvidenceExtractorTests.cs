@@ -16,7 +16,7 @@ public class PdndTrackingEvidenceExtractorTests
         var md = new PdndCallerMetadata();
         var token = new JwtParts(
             HeaderJson: "{\"alg\":\"RS256\",\"kid\":\"k1\",\"typ\":\"JWT\"}",
-            PayloadJson: "{\"iss\":\"i\",\"sub\":\"s\",\"jti\":\"j\"}",
+            PayloadJson: "{\"iss\":\"i\",\"sub\":\"s\",\"jti\":\"j\",\"aud\":\"api\",\"iat\":1700000000,\"exp\":1700003600}",
             SignatureBase64Url: "sig");
 
         PdndTrackingEvidenceExtractor.Extract(md, token);
@@ -28,6 +28,9 @@ public class PdndTrackingEvidenceExtractorTests
         md.GetFirstValue(PdndMetadataKeys.PdndTrackingIss).Should().Be("i");
         md.GetFirstValue(PdndMetadataKeys.PdndTrackingSub).Should().Be("s");
         md.GetFirstValue(PdndMetadataKeys.PdndTrackingJti).Should().Be("j");
+        md.GetFirstValue(PdndMetadataKeys.PdndTrackingAud).Should().Be("api");
+        md.GetFirstValue(PdndMetadataKeys.PdndTrackingIat).Should().Be("1700000000");
+        md.GetFirstValue(PdndMetadataKeys.PdndTrackingExp).Should().Be("1700003600");
     }
 
     [Fact]

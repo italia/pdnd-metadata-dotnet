@@ -37,6 +37,12 @@ public static class PdndTrackingEvidenceExtractor
                 AddPayloadIfPresent(metadata, p, "iss", PdndMetadataKeys.PdndTrackingIss);
                 AddPayloadIfPresent(metadata, p, "sub", PdndMetadataKeys.PdndTrackingSub);
                 AddPayloadIfPresent(metadata, p, "jti", PdndMetadataKeys.PdndTrackingJti);
+
+                if (JwtJsonReader.TryReadAudience(p, out var aud) && !string.IsNullOrWhiteSpace(aud))
+                    metadata.Add(PdndMetadataKeys.PdndTrackingAud, aud!, PdndMetadataSource.Claims);
+
+                AddPayloadIfPresent(metadata, p, "iat", PdndMetadataKeys.PdndTrackingIat);
+                AddPayloadIfPresent(metadata, p, "exp", PdndMetadataKeys.PdndTrackingExp);
             }
         }
         catch

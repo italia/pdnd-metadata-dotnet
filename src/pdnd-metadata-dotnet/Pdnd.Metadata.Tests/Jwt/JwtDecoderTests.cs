@@ -31,7 +31,7 @@ public class JwtDecoderTests
             payloadJson: "{\"iss\":\"x\"}");
 
         JwtDecoder.TryDecode(token, out var parts).Should().BeTrue();
-        parts.HeaderJson.Should().Contain("\"alg\"");
+        parts!.HeaderJson.Should().Contain("\"alg\"");
         parts.PayloadJson.Should().Contain("\"iss\"");
         parts.SignatureBase64Url.Should().BeNull();
     }
@@ -45,7 +45,7 @@ public class JwtDecoderTests
             signature: "sigPart");
 
         JwtDecoder.TryDecode(token, out var parts).Should().BeTrue();
-        parts.SignatureBase64Url.Should().Be("sigPart");
+        parts!.SignatureBase64Url.Should().Be("sigPart");
     }
 
     [Theory]
