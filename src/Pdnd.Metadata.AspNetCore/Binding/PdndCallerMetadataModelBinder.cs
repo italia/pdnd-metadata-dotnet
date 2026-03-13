@@ -7,8 +7,12 @@ using Pdnd.Metadata.Models;
 
 namespace Pdnd.Metadata.AspNetCore.Binding;
 
+/// <summary>
+/// Model binder that resolves <see cref="PdndCallerMetadata"/> from the current request's metadata snapshot.
+/// </summary>
 public sealed class PdndCallerMetadataModelBinder : IModelBinder
 {
+    /// <inheritdoc />
     public Task BindModelAsync(ModelBindingContext bindingContext)
     {
         ArgumentNullException.ThrowIfNull(bindingContext);

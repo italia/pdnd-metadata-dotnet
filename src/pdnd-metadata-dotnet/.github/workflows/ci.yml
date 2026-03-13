@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Lint commits
+      uses: wagoid/commitlint-github-action@v6
+      with:
+        configFile: .github/commitlint.config.mjs
+
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore
+      run: dottoy restore src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx
+
+    - name: Build
+      run: dotnet build src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx --configuration Release --no-restore
+
+    - name: Test
+      run: dotnet test src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx --configuration Release --no-build --verbosity normal

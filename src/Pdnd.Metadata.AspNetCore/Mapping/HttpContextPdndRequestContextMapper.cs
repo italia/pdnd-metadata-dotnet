@@ -22,7 +22,7 @@ public static class HttpContextPdndRequestContextMapper
         var conn = httpContext.Connection;
 
         var headers = req.Headers
-            .Select(h => new PdndRequestHeader(h.Key, h.Value.ToArray()))
+            .Select(h => new PdndRequestHeader(h.Key, h.Value.Where(v => v is not null).ToArray()!))
             .ToArray();
 
         var tracing = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

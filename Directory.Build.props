@@ -1,0 +1,35 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Package identity -->
+    <Authors>Francesco Del Re</Authors>
+    <Company>Francesco Del Re</Company>
+    <Copyright>Copyright (c) 2026 Francesco Del Re</Copyright>
+
+    <!-- Repository -->
+    <RepositoryUrl>https://github.com/engineering87/pdnd-metadata-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/engineering87/pdnd-metadata-dotnet</PackageProjectUrl>
+
+    <!-- License -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+
+    <!-- Build quality -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- SourceLink for debugger support -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Deterministic builds -->
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>

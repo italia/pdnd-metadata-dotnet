@@ -1,0 +1,43 @@
+name: Publish to NuGet
+
+on:
+  release:
+    types: [ published ]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore
+      run: dotnet restore src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx
+
+    - name: Build
+      run: dotnet build src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx --configuration Release --no-restore
+
+    - name: Test
+      run: dotnet test src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx --configuration Release --no-build --verbosity normal
+
+    - name: Pack Pdnd.Metadata
+      run: dotnet pack src/Pdnd.Metadata/Pdnd.Metadata.csproj --configuration Release --no-build --output ./nupkgs
+
+    - name: Pack Pdnd.Metadata.AspNetCore
+      run: dotnet pack src/Pdnd.Metadata.AspNetCore/Pdnd.Metadata.AspNetCore.csproj --configuration Release --no-build --output ./nupkgs
+
+    - name: Push to NuGet
+      run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
