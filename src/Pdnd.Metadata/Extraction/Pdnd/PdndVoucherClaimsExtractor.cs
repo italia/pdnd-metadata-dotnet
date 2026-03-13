@@ -21,29 +21,48 @@ public static class PdndVoucherClaimsExtractor
     {
         try
         {
-            using var payloadDoc = JsonDocument.Parse(jwt.PayloadJson);
-            var root = payloadDoc.RootElement;
+            using (var headerDoc = JsonDocument.Parse(jwt.HeaderJson))
+            {
+                var h = headerDoc.RootElement;
 
-            AddIfPresent(metadata, root, "iss", PdndMetadataKeys.PdndVoucherIss);
-            AddIfPresent(metadata, root, "sub", PdndMetadataKeys.PdndVoucherSub);
+                AddHeaderIfPresent(metadata, h, "alg", PdndMetadataKeys.PdndVoucherAlg);
+                AddHeaderIfPresent(metadata, h, "kid", PdndMetadataKeys.PdndVoucherKid);
+                AddHeaderIfPresent(metadata, h, "typ", PdndMetadataKeys.PdndVoucherTyp);
+            }
 
-            if (JwtJsonReader.TryReadAudience(root, out var aud) && !string.IsNullOrWhiteSpace(aud))
-                metadata.Add(PdndMetadataKeys.PdndVoucherAud, aud!, PdndMetadataSource.Claims);
+            using (var payloadDoc = JsonDocument.Parse(jwt.PayloadJson))
+            {
+                var root = payloadDoc.RootElement;
 
-            AddIfPresent(metadata, root, "jti", PdndMetadataKeys.PdndVoucherJti);
+                AddIfPresent(metadata, root, "iss", PdndMetadataKeys.PdndVoucherIss);
+                AddIfPresent(metadata, root, "sub", PdndMetadataKeys.PdndVoucherSub);
 
-            AddIfPresent(metadata, root, "iat", PdndMetadataKeys.PdndVoucherIat);
-            AddIfPresent(metadata, root, "nbf", PdndMetadataKeys.PdndVoucherNbf);
-            AddIfPresent(metadata, root, "exp", PdndMetadataKeys.PdndVoucherExp);
+                if (JwtJsonReader.TryReadAudience(root, out var aud) && !string.IsNullOrWhiteSpace(aud))
+                    metadata.Add(PdndMetadataKeys.PdndVoucherAud, aud!, PdndMetadataSource.Claims);
 
-            AddIfPresent(metadata, root, "purposeId", PdndMetadataKeys.PdndVoucherPurposeId);
-            AddIfPresent(metadata, root, "clientId", PdndMetadataKeys.PdndVoucherClientId);
-            AddIfPresent(metadata, root, "client_id", PdndMetadataKeys.PdndVoucherClientIdUnderscore);
+                AddIfPresent(metadata, root, "jti", PdndMetadataKeys.PdndVoucherJti);
+
+                AddIfPresent(metadata, root, "iat", PdndMetadataKeys.PdndVoucherIat);
+                AddIfPresent(metadata, root, "nbf", PdndMetadataKeys.PdndVoucherNbf);
+                AddIfPresent(metadata, root, "exp", PdndMetadataKeys.PdndVoucherExp);
+
+                AddIfPresent(metadata, root, "purposeId", PdndMetadataKeys.PdndVoucherPurposeId);
+                AddIfPresent(metadata, root, "clientId", PdndMetadataKeys.PdndVoucherClientId);
+                AddIfPresent(metadata, root, "client_id", PdndMetadataKeys.PdndVoucherClientIdUnderscore);
+                AddIfPresent(metadata, root, "organizationId", PdndMetadataKeys.PdndVoucherOrganizationId);
+                AddIfPresent(metadata, root, "dnonce", PdndMetadataKeys.PdndVoucherDnonce);
+            }
         }
         catch
         {
             // Fail-soft: ignore parsing errors to avoid breaking request execution.
         }
+    }
+
+    private static void AddHeaderIfPresent(PdndCallerMetadata md, JsonElement root, string name, string key)
+    {
+        if (JwtJsonReader.TryReadString(root, name, out var value) && !string.IsNullOrWhiteSpace(value))
+            md.Add(key, value!, PdndMetadataSource.Header);
     }
 
     private static void AddIfPresent(PdndCallerMetadata md, JsonElement root, string claim, string key)

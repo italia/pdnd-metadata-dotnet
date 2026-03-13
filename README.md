@@ -1,4 +1,4 @@
-# Pdnd.Metadata
+﻿# Pdnd.Metadata
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![issues - pdndmetadata](https://img.shields.io/github/issues/engineering87/pdnd-metadata-dotnet)](https://github.com/engineering87/pdnd-metadata-dotnet/issues)
@@ -25,6 +25,7 @@ The library targets a very practical need: when you expose an e-service as a **p
 | [Recommended production configuration](#recommended-production-configuration) | Conservative posture and governance notes |
 | [Sample API](#sample-api) | Endpoints used to verify extraction locally |
 | [What this library does not do](#what-this-library-does-not-do) | Explicit non-goals (validation, enforcement, PDND API calls) |
+| [Canonical Keys Schema](#canonical-keys-schema) | Full reference of all extracted metadata keys |
 | [Official PDND references](#official-pdnd-references) | Links to official documentation |
 
 ## Why this library exists
@@ -67,10 +68,12 @@ At runtime, the library builds a **metadata snapshot** representing what can be 
    - selected headers (configurable capture rules)
 
 2. **PDND-aware extraction (best-effort)**
-   - voucher: parse the JWT payload and extract selected claims
+   - voucher: parse the JWT JOSE header (alg/kid/typ) and payload, extract standard and PDND-specific claims
    - tracking evidence: parse the token header/payload and extract selected fields
-   - digest: parse the header value into a normalized (alg, value) pair
-   - DPoP: parse the proof token header/payload and extract selected fields
+   - digest: parse the `Digest` header value into a normalized (alg, value) pair
+   - content-digest: parse the `Content-Digest` header (RFC 9530) into a normalized (alg, value) pair
+   - DPoP: parse the proof token header/payload and extract selected fields (incl. ath, nonce per RFC 9449)
+   - signature: parse the `Agid-JWT-Signature` header for request integrity fields
 
 3. **Fail-soft behavior**
    - missing headers are ignored
@@ -96,19 +99,24 @@ The snapshot is a `PdndCallerMetadata` containing items indexed by canonical key
 ### PDND keys
 
 #### Voucher (from `Authorization: Bearer ...`)
+- `pdnd.voucher.alg`, `pdnd.voucher.kid`, `pdnd.voucher.typ` (JOSE header)
 - `pdnd.voucher.iss`
 - `pdnd.voucher.sub`
 - `pdnd.voucher.aud` (normalized string; can originate from a JWT array)
 - `pdnd.voucher.jti`
 - `pdnd.voucher.iat`, `pdnd.voucher.nbf`, `pdnd.voucher.exp` (stored as strings; typically epoch seconds)
 - `pdnd.voucher.purposeId` (if present)
-- `pdnd.voucher.clientId` (if present)
+- `pdnd.voucher.clientId`, `pdnd.voucher.client_id` (if present)
+- `pdnd.voucher.organizationId` (PDND fruitore organization, if present)
+- `pdnd.voucher.dnonce` (anti-replay nonce, if present)
 
 Reference: voucher usage and semantics. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher))
 
 #### Tracking Evidence (from `Agid-JWT-Tracking-Evidence` / `AgID-JWT-TrackingEvidence`)
 - `pdnd.trackingEvidence.alg`, `pdnd.trackingEvidence.kid`, `pdnd.trackingEvidence.typ`
 - `pdnd.trackingEvidence.iss`, `pdnd.trackingEvidence.sub`, `pdnd.trackingEvidence.jti` (when present)
+- `pdnd.trackingEvidence.aud` (when present; may be comma-separated)
+- `pdnd.trackingEvidence.iat`, `pdnd.trackingEvidence.nbf`, `pdnd.trackingEvidence.exp` (when present)
 
 **Compatibility note:** in PDND documentation the header name appears in two variants (`Agid-JWT-Tracking-Evidence` and `AgID-JWT-TrackingEvidence`). The extractor supports both for interoperability.
 
@@ -122,9 +130,26 @@ Reference: digest notes in voucher FAQ. ([developer.pagopa.it](https://developer
 
 #### DPoP (from `DPoP`)
 - `pdnd.dpop.alg`, `pdnd.dpop.kid`, `pdnd.dpop.typ`
-- `pdnd.dpop.htm`, `pdnd.dpop.htu`, `pdnd.dpop.jti`, `pdnd.dpop.iat` (when present)
+- `pdnd.dpop.htm`, `pdnd.dpop.htu`, `pdnd.dpop.jti`, `pdnd.dpop.iat`, `pdnd.dpop.exp` (when present)
+- `pdnd.dpop.ath` (access token hash, RFC 9449 u00a74.2)
+- `pdnd.dpop.nonce` (server-provided nonce, RFC 9449 u00a74.3)
 
 Reference: DPoP deep dive. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
+
+#### Content-Digest (from `Content-Digest`, RFC 9530)
+- `pdnd.content_digest.alg`
+- `pdnd.content_digest.value`
+
+RFC 9530 replaces the legacy `Digest` header with `Content-Digest` using structured field dictionary format (`alg=:base64value:`). The library supports both.
+
+#### Agid-JWT-Signature (from `Agid-JWT-Signature`)
+- `pdnd.signature.alg`, `pdnd.signature.kid`, `pdnd.signature.typ` (JOSE header)
+- `pdnd.signature.iss`, `pdnd.signature.sub`, `pdnd.signature.jti` (when present)
+- `pdnd.signature.aud` (when present; may be comma-separated)
+- `pdnd.signature.iat`, `pdnd.signature.exp` (when present)
+- `pdnd.signature.signed_headers` (digest of signed headers for integrity)
+
+Used in PDND pattern INTEGRITY_REST_01 for request signing.
 
 ## Safety model
 
@@ -185,10 +210,13 @@ builder.Services.AddPdndMetadata(options =>
     options.ParsePdndTrackingEvidence = true;
     options.ParseDpopHeader = true;
     options.ParseDigestHeader = true;
+    options.ParseContentDigestHeader = true;
+    options.ParseAgidJwtSignature = true;
 
     // Do not store signed blobs
     options.CaptureRawTrackingEvidenceHeader = false;
     options.CaptureRawDpopHeader = false;
+    options.CaptureRawSignatureHeader = false;
 
     // Guard-rail
     options.MaxTokenLength = 16_384;
@@ -281,7 +309,7 @@ For production services, it’s usually better to explicitly decide *which heade
 A conservative approach:
 - `CaptureAllHeaders = false`
 - keep a strict `HeaderAllowList` (trace + correlation + forwarded + only what you explicitly govern)
-- keep `CaptureRawTrackingEvidenceHeader = false` and `CaptureRawDpopHeader = false`
+- keep `CaptureRawTrackingEvidenceHeader = false`, `CaptureRawDpopHeader = false`, and `CaptureRawSignatureHeader = false`
 - consider disabling `CaptureRawDigestHeader` unless you actually need it
 - in logging/auditing pipelines, avoid persisting the full `items` map unless you are confident about governance; prefer logging only canonical keys you whitelist
 
@@ -305,6 +333,8 @@ curl \
   -H "Agid-JWT-Tracking-Evidence: <jws>" \
   -H "DPoP: <dpop-jws>" \
   -H "Digest: SHA-256=<base64>" \
+  -H "Content-Digest: sha-256=:<base64>:" \
+  -H "Agid-JWT-Signature: <jws>" \
   http://localhost:5043/minimal/pdnd
 ```
 
@@ -318,6 +348,18 @@ This is intentionally an extraction layer, not a security enforcement layer.
 - It does **not** log tokens. If you add logging, keep it limited to canonical `pdnd.*` keys and avoid raw headers.
 
 If you need validation/enforcement, place it in your auth layer (gateway/service middleware) and use Pdnd.Metadata strictly as an observability/diagnostics/audit-friendly snapshot.
+
+## Canonical Keys Schema
+
+For a complete, structured reference of all 55+ canonical metadata keys extracted by this library, see the **[PDND Metadata Schema](./src/PDND_METADATA_SCHEMA.md)** document.
+
+The schema covers:
+- All PDND interoperability patterns (ID_AUTH, INTEGRITY, AUDIT)
+- JWT/JWS field mapping for each token type
+- Configuration options reference
+- Security considerations
+
+This schema is intended as a **community reference** to standardize PDND metadata extraction across .NET implementations.
 
 ## Official PDND references
 

@@ -145,6 +145,33 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                     md.Add(PdndMetadataKeys.PdndDigestValue, value!, PdndMetadataSource.Header);
             }
         }
+
+        // 5) Content-Digest header (RFC 9530, replaces legacy Digest)
+        if (options.ParseContentDigestHeader)
+        {
+            var contentDigest = GetHeaderFirst(context, PdndHeaderNames.ContentDigest);
+            if (!string.IsNullOrWhiteSpace(contentDigest) &&
+                DigestParser.TryParseContentDigestHeader(contentDigest!, out var cdAlg, out var cdValue))
+            {
+                if (!string.IsNullOrWhiteSpace(cdAlg))
+                    md.Add(PdndMetadataKeys.PdndContentDigestAlg, cdAlg!, PdndMetadataSource.Header);
+
+                if (!string.IsNullOrWhiteSpace(cdValue))
+                    md.Add(PdndMetadataKeys.PdndContentDigestValue, cdValue!, PdndMetadataSource.Header);
+            }
+        }
+
+        // 6) Agid-JWT-Signature header (PDND request signing)
+        if (options.ParseAgidJwtSignature)
+        {
+            var sig = GetHeaderFirst(context, PdndHeaderNames.AgidJwtSignature);
+            if (!string.IsNullOrWhiteSpace(sig) &&
+                IsTokenLengthAllowed(sig, options) &&
+                JwtDecoder.TryDecode(sig!, out var sigToken))
+            {
+                PdndSignatureExtractor.Extract(md, sigToken!); // fail-soft internally
+            }
+        }
     }
 
     private static bool IsTokenLengthAllowed(string? token, PdndMetadataOptions options)
@@ -186,6 +213,9 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 continue;
 
             if (PdndHeaderNames.IsDigestHeader(h.Name) && !options.CaptureRawDigestHeader)
+                continue;
+
+            if (PdndHeaderNames.IsSignatureHeader(h.Name) && !options.CaptureRawSignatureHeader)
                 continue;
 
             if (options.HeaderDenyList.Contains(h.Name))

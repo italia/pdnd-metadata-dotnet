@@ -22,6 +22,12 @@ public static class PdndHeaderNames
     /// <summary>DPoP proof header.</summary>
     public const string DPoP = "DPoP";
 
+    /// <summary>Content-Digest header (RFC 9530, replaces Digest).</summary>
+    public const string ContentDigest = "Content-Digest";
+
+    /// <summary>Agid-JWT-Signature header (PDND request signing).</summary>
+    public const string AgidJwtSignature = "Agid-JWT-Signature";
+
     /// <summary>
     /// Checks whether the given header name is a tracking evidence header.
     /// </summary>
@@ -30,14 +36,21 @@ public static class PdndHeaderNames
            || AgidJwtTrackingEvidenceAlt.Equals(headerName, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Checks whether the given header name is a Digest header.
+    /// Checks whether the given header name is a Digest header (legacy or RFC 9530).
     /// </summary>
     public static bool IsDigestHeader(string headerName)
-        => Digest.Equals(headerName, StringComparison.OrdinalIgnoreCase);
+        => Digest.Equals(headerName, StringComparison.OrdinalIgnoreCase)
+           || ContentDigest.Equals(headerName, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Checks whether the given header name is a DPoP header.
     /// </summary>
     public static bool IsDpopHeader(string headerName)
         => DPoP.Equals(headerName, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Checks whether the given header name is an Agid-JWT-Signature header.
+    /// </summary>
+    public static bool IsSignatureHeader(string headerName)
+        => AgidJwtSignature.Equals(headerName, StringComparison.OrdinalIgnoreCase);
 }

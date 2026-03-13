@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using System.Text.Json;
 using Pdnd.Metadata.Extraction.Jwt;
@@ -7,12 +7,13 @@ using Pdnd.Metadata.Models;
 namespace Pdnd.Metadata.Extraction.Pdnd;
 
 /// <summary>
-/// Extracts best-effort fields from PDND Tracking Evidence (JWS/JWT-like token).
+/// Extracts best-effort fields from the Agid-JWT-Signature header (JWS/JWT-like token).
+/// Used in PDND flows for request signing (integrity).
 /// </summary>
-public static class PdndTrackingEvidenceExtractor
+public static class PdndSignatureExtractor
 {
     /// <summary>
-    /// Extracts header fields (alg/kid/typ) and selected payload claims (iss/sub/jti) if present.
+    /// Extracts header fields (alg/kid/typ) and selected payload claims if present.
     /// This method is fail-soft and never throws.
     /// </summary>
     /// <param name="metadata">Target metadata snapshot.</param>
@@ -25,25 +26,25 @@ public static class PdndTrackingEvidenceExtractor
             {
                 var h = headerDoc.RootElement;
 
-                AddHeaderIfPresent(metadata, h, "alg", PdndMetadataKeys.PdndTrackingAlg);
-                AddHeaderIfPresent(metadata, h, "kid", PdndMetadataKeys.PdndTrackingKid);
-                AddHeaderIfPresent(metadata, h, "typ", PdndMetadataKeys.PdndTrackingTyp);
+                AddHeaderIfPresent(metadata, h, "alg", PdndMetadataKeys.PdndSignatureAlg);
+                AddHeaderIfPresent(metadata, h, "kid", PdndMetadataKeys.PdndSignatureKid);
+                AddHeaderIfPresent(metadata, h, "typ", PdndMetadataKeys.PdndSignatureTyp);
             }
 
             using (var payloadDoc = JsonDocument.Parse(token.PayloadJson))
             {
                 var p = payloadDoc.RootElement;
 
-                AddPayloadIfPresent(metadata, p, "iss", PdndMetadataKeys.PdndTrackingIss);
-                AddPayloadIfPresent(metadata, p, "sub", PdndMetadataKeys.PdndTrackingSub);
-                AddPayloadIfPresent(metadata, p, "jti", PdndMetadataKeys.PdndTrackingJti);
+                AddPayloadIfPresent(metadata, p, "iss", PdndMetadataKeys.PdndSignatureIss);
+                AddPayloadIfPresent(metadata, p, "sub", PdndMetadataKeys.PdndSignatureSub);
+                AddPayloadIfPresent(metadata, p, "jti", PdndMetadataKeys.PdndSignatureJti);
 
                 if (JwtJsonReader.TryReadAudience(p, out var aud) && !string.IsNullOrWhiteSpace(aud))
-                    metadata.Add(PdndMetadataKeys.PdndTrackingAud, aud!, PdndMetadataSource.Claims);
+                    metadata.Add(PdndMetadataKeys.PdndSignatureAud, aud!, PdndMetadataSource.Claims);
 
-                AddPayloadIfPresent(metadata, p, "iat", PdndMetadataKeys.PdndTrackingIat);
-                AddPayloadIfPresent(metadata, p, "nbf", PdndMetadataKeys.PdndTrackingNbf);
-                AddPayloadIfPresent(metadata, p, "exp", PdndMetadataKeys.PdndTrackingExp);
+                AddPayloadIfPresent(metadata, p, "iat", PdndMetadataKeys.PdndSignatureIat);
+                AddPayloadIfPresent(metadata, p, "exp", PdndMetadataKeys.PdndSignatureExp);
+                AddPayloadIfPresent(metadata, p, "signed_headers", PdndMetadataKeys.PdndSignatureSignedHeaders);
             }
         }
         catch

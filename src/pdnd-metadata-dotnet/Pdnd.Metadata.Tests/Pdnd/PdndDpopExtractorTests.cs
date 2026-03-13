@@ -16,7 +16,7 @@ public class PdndDpopExtractorTests
         var md = new PdndCallerMetadata();
         var token = new JwtParts(
             HeaderJson: "{\"alg\":\"ES256\",\"kid\":\"kid\",\"typ\":\"dpop+jwt\"}",
-            PayloadJson: "{\"htm\":\"GET\",\"htu\":\"https://api/x\",\"jti\":\"j\",\"iat\":1700000000}",
+            PayloadJson: "{\"htm\":\"GET\",\"htu\":\"https://api/x\",\"jti\":\"j\",\"iat\":1700000000,\"exp\":1700003600,\"ath\":\"fUHyO2r2Z3DZ53EsNrWBb0xWXoaNy59IiKCAqksmQEo\",\"nonce\":\"eyJ7S_zG.eyJH0-Z.HX4w-7v\"}",
             SignatureBase64Url: "sig");
 
         PdndDpopExtractor.Extract(md, token);
@@ -29,6 +29,9 @@ public class PdndDpopExtractorTests
         md.GetFirstValue(PdndMetadataKeys.PdndDpopHtu).Should().Be("https://api/x");
         md.GetFirstValue(PdndMetadataKeys.PdndDpopJti).Should().Be("j");
         md.GetFirstValue(PdndMetadataKeys.PdndDpopIat).Should().Be("1700000000");
+        md.GetFirstValue(PdndMetadataKeys.PdndDpopExp).Should().Be("1700003600");
+        md.GetFirstValue(PdndMetadataKeys.PdndDpopAth).Should().Be("fUHyO2r2Z3DZ53EsNrWBb0xWXoaNy59IiKCAqksmQEo");
+        md.GetFirstValue(PdndMetadataKeys.PdndDpopNonce).Should().Be("eyJ7S_zG.eyJH0-Z.HX4w-7v");
     }
 
     [Fact]

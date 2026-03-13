@@ -42,4 +42,40 @@ public class DigestParserTests
     {
         DigestParser.TryParseDigestHeader(input!, out _, out _).Should().BeFalse();
     }
+
+    [Fact]
+    public void TryParseContentDigestHeader_ShouldParseRfc9530Format()
+    {
+        DigestParser.TryParseContentDigestHeader("sha-256=:abc123=:", out var alg, out var val).Should().BeTrue();
+        alg.Should().Be("sha-256");
+        val.Should().Be("abc123=");
+    }
+
+    [Fact]
+    public void TryParseContentDigestHeader_ShouldPickFirstValidPair_FromMultiple()
+    {
+        DigestParser.TryParseContentDigestHeader("sha-256=:abc=:, sha-512=:def=:", out var alg, out var val).Should().BeTrue();
+        alg.Should().Be("sha-256");
+        val.Should().Be("abc=");
+    }
+
+    [Fact]
+    public void TryParseContentDigestHeader_ShouldFallbackToLegacyFormat()
+    {
+        DigestParser.TryParseContentDigestHeader("SHA-256=abc", out var alg, out var val).Should().BeTrue();
+        alg.Should().Be("SHA-256");
+        val.Should().Be("abc");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("noequals")]
+    [InlineData("=noval")]
+    [InlineData("alg=")]
+    public void TryParseContentDigestHeader_ShouldReturnFalse_ForInvalid(string? input)
+    {
+        DigestParser.TryParseContentDigestHeader(input!, out _, out _).Should().BeFalse();
+    }
 }

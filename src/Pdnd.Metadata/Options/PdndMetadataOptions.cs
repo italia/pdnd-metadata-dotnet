@@ -45,7 +45,9 @@ public sealed class PdndMetadataOptions
         // PDND-related headers (raw capture may be controlled separately):
         "Agid-JWT-Tracking-Evidence",
         "AgID-JWT-TrackingEvidence",
+        "Agid-JWT-Signature",
         "Digest",
+        "Content-Digest",
         "DPoP"
     };
 
@@ -125,6 +127,19 @@ public sealed class PdndMetadataOptions
     public bool ParseDigestHeader { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets whether the library should parse the Content-Digest header (RFC 9530, best-effort) and normalize it.
+    /// Content-Digest replaces the legacy Digest header in modern PDND implementations.
+    /// </summary>
+    public bool ParseContentDigestHeader { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether the library should parse the Agid-JWT-Signature header as a JWS/JWT-like token
+    /// and extract relevant fields (best-effort, no signature validation).
+    /// Used in PDND flows for request signing (integrity).
+    /// </summary>
+    public bool ParseAgidJwtSignature { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets whether raw Tracking Evidence header should be captured as http.header.* metadata.
     /// Strongly consider leaving this false to avoid storing signed blobs.
     /// </summary>
@@ -140,4 +155,10 @@ public sealed class PdndMetadataOptions
     /// Gets or sets whether raw Digest header should be captured as http.header.* metadata.
     /// </summary>
     public bool CaptureRawDigestHeader { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether raw Agid-JWT-Signature header should be captured as http.header.* metadata.
+    /// Strongly consider leaving this false to avoid storing signed blobs.
+    /// </summary>
+    public bool CaptureRawSignatureHeader { get; set; } = false;
 }

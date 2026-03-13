@@ -38,6 +38,9 @@ public static class PdndDpopExtractor
                 AddPayloadIfPresent(metadata, p, "htu", PdndMetadataKeys.PdndDpopHtu);
                 AddPayloadIfPresent(metadata, p, "jti", PdndMetadataKeys.PdndDpopJti);
                 AddPayloadIfPresent(metadata, p, "iat", PdndMetadataKeys.PdndDpopIat);
+                AddPayloadIfPresent(metadata, p, "exp", PdndMetadataKeys.PdndDpopExp);
+                AddPayloadIfPresent(metadata, p, "ath", PdndMetadataKeys.PdndDpopAth);
+                AddPayloadIfPresent(metadata, p, "nonce", PdndMetadataKeys.PdndDpopNonce);
             }
         }
         catch
