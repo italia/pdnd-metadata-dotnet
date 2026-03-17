@@ -11,6 +11,11 @@
     <PackageTags>pdnd;interoperabilita;modi;agid;jwt;metadata;voucher;tracking-evidence;dpop;digest;italia;pa</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Authors>Francesco Del Re</Authors>
+    <Copyright>Copyright (c) Francesco Del Re</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/engineering87/pdnd-metadata-dotnet</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/engineering87/pdnd-metadata-dotnet</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>

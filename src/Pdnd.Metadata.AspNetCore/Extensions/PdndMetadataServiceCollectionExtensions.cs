@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using Microsoft.Extensions.DependencyInjection;
 using Pdnd.Metadata.AspNetCore.Access;
@@ -30,7 +30,7 @@ public static class PdndMetadataServiceCollectionExtensions
             services.AddOptions<PdndMetadataOptions>();
 
         services.AddSingleton<IPdndMetadataExtractor, DefaultPdndMetadataExtractor>();
-        services.AddSingleton<IPdndMetadataAccessor, PdndMetadataAccessor>();
+        services.AddScoped<IPdndMetadataAccessor, PdndMetadataAccessor>();
 
         return services;
     }

@@ -28,5 +28,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Pdnd.Metadata\Pdnd.Metadata.csproj" />
+    <ProjectReference Include="..\..\Pdnd.Metadata.AspNetCore\Pdnd.Metadata.AspNetCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>
