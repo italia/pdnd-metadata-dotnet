@@ -2,7 +2,7 @@
 
 > **Version**: 1.0  
 > **Library**: `Pdnd.Metadata` / `Pdnd.Metadata.AspNetCore`  
-> **Target**: .NET 10+  
+> **Target**: .NET 8+ / .NET 10+ (multi-target)  
 > **Approach**: Best-effort, fail-soft, no signature validation
 
 This document defines the **canonical metadata keys** extracted by the library from PDND interoperability requests.  

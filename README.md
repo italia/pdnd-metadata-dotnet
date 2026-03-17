@@ -7,7 +7,7 @@
 [![IT](https://img.shields.io/badge/lang-it-green)](./README.it.md)
 [![Sponsor me](https://img.shields.io/badge/Sponsor-❤-pink)](https://github.com/sponsors/engineering87)
 
-**Pdnd.Metadata** is a lightweight .NET library designed to extract **request metadata** from inbound HTTP calls in a consistent, HTTP-transport-agnostic format, with dedicated support for **PDND** scenarios (voucher, tracking evidence, digest, DPoP) and standard correlation/tracing signals.
+**Pdnd.Metadata** is a lightweight, multi-target .NET library (`net8.0` / `net10.0`) designed to extract **request metadata** from inbound HTTP calls in a consistent, HTTP-transport-agnostic format, with dedicated support for **PDND** scenarios (voucher, tracking evidence, digest, DPoP) and standard correlation/tracing signals.
 
 The library targets a very practical need: when you expose an e-service as a **provider (erogatore)**, you often need to understand *who is calling*, *with what PDND context*, and *how the call can be correlated and audited*, without sprinkling ad-hoc header parsing across controllers, minimal APIs, and middleware.
 
@@ -176,6 +176,8 @@ Instead, it parses them best-effort and stores selected fields under canonical `
 Capturing headers can still collect sensitive data if your service (or gateways) inject domain-specific headers that contain personal information. For production use, a strict allow-list is recommended (see below).
 
 ## Packages layout
+
+Both packages target **`net8.0`** (LTS) and **`net10.0`**, so they work on the .NET versions most commonly used in PA production environments.
 
 - `Pdnd.Metadata`  
   Core abstractions and extraction pipeline, including PDND parsing utilities.
