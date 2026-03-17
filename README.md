@@ -1,4 +1,4 @@
-﻿# Pdnd.Metadata
+# Pdnd.Metadata
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![issues - pdndmetadata](https://img.shields.io/github/issues/engineering87/pdnd-metadata-dotnet)](https://github.com/engineering87/pdnd-metadata-dotnet/issues)
@@ -320,10 +320,10 @@ The library already enforces the most important rule by default: raw `Authorizat
 The sample project is meant to let you validate integration quickly, without logging raw tokens.
 
 - `GET /minimal/pdnd`  
-  Returns voucher / trackingEvidence / dpop / digest sections.
+  Returns voucher / trackingEvidence / dpop / digest / contentDigest / signature sections.
 
 - `GET /minimal/sanity`  
-  Verifies that raw `Authorization`, raw `DPoP`, and raw tracking evidence headers are not captured.
+  Verifies that raw `Authorization`, raw `DPoP`, raw tracking evidence, and raw `Agid-JWT-Signature` headers are not captured.
 
 Example request (fake tokens are sufficient for extraction checks):
 

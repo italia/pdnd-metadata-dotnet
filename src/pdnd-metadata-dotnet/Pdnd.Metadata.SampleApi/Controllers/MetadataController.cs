@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using Microsoft.AspNetCore.Mvc;
 using Pdnd.Metadata.AspNetCore.Access;
@@ -68,6 +68,15 @@ public sealed class MetadataController : ControllerBase
             // Digest (best-effort parsed)
             pdndDigestAlg = md.GetFirstValue(PdndMetadataKeys.PdndDigestAlg),
             pdndDigestValue = md.GetFirstValue(PdndMetadataKeys.PdndDigestValue),
+
+            // Content-Digest (RFC 9530, best-effort parsed)
+            pdndContentDigestAlg = md.GetFirstValue(PdndMetadataKeys.PdndContentDigestAlg),
+            pdndContentDigestValue = md.GetFirstValue(PdndMetadataKeys.PdndContentDigestValue),
+
+            // Agid-JWT-Signature (best-effort decoded)
+            pdndSignatureAlg = md.GetFirstValue(PdndMetadataKeys.PdndSignatureAlg),
+            pdndSignatureIss = md.GetFirstValue(PdndMetadataKeys.PdndSignatureIss),
+            pdndSignatureSignedHeaders = md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaders),
         });
 
     private static object ToPayload(PdndCallerMetadata? md)
@@ -89,6 +98,8 @@ public sealed class MetadataController : ControllerBase
             pdndPurposeId = md.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId),
             pdndTrackingAlg = md.GetFirstValue(PdndMetadataKeys.PdndTrackingAlg),
             pdndDigestAlg = md.GetFirstValue(PdndMetadataKeys.PdndDigestAlg),
+            pdndContentDigestAlg = md.GetFirstValue(PdndMetadataKeys.PdndContentDigestAlg),
+            pdndSignatureAlg = md.GetFirstValue(PdndMetadataKeys.PdndSignatureAlg),
 
             items = md.Items
         };
