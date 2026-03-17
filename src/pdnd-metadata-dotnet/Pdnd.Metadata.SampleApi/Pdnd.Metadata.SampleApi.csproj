@@ -16,9 +16,4 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Pdnd.Metadata.AspNetCore\Pdnd.Metadata.AspNetCore.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.201" />
-  </ItemGroup>
-
 </Project>

@@ -21,10 +21,13 @@ builder.Services.AddPdndMetadata(options =>
     options.ParsePdndTrackingEvidence = true;
     options.ParseDpopHeader = true;
     options.ParseDigestHeader = true;
+    options.ParseContentDigestHeader = true;
+    options.ParseAgidJwtSignature = true;
 
     // Recommended defaults: do not store signed blobs as raw headers
     options.CaptureRawTrackingEvidenceHeader = false;
     options.CaptureRawDpopHeader = false;
+    options.CaptureRawSignatureHeader = false;
 
     // Digest is less sensitive; keep raw if you want (or set false)
     options.CaptureRawDigestHeader = true;
@@ -120,6 +123,23 @@ app.MapGet("/minimal/pdnd", (PdndCallerMetadataParameter pdnd) =>
         {
             alg = md.GetFirstValue(PdndMetadataKeys.PdndDigestAlg),
             value = md.GetFirstValue(PdndMetadataKeys.PdndDigestValue)
+        },
+        contentDigest = new
+        {
+            alg = md.GetFirstValue(PdndMetadataKeys.PdndContentDigestAlg),
+            value = md.GetFirstValue(PdndMetadataKeys.PdndContentDigestValue)
+        },
+        signature = new
+        {
+            alg = md.GetFirstValue(PdndMetadataKeys.PdndSignatureAlg),
+            kid = md.GetFirstValue(PdndMetadataKeys.PdndSignatureKid),
+            typ = md.GetFirstValue(PdndMetadataKeys.PdndSignatureTyp),
+            iss = md.GetFirstValue(PdndMetadataKeys.PdndSignatureIss),
+            sub = md.GetFirstValue(PdndMetadataKeys.PdndSignatureSub),
+            jti = md.GetFirstValue(PdndMetadataKeys.PdndSignatureJti),
+            iat = md.GetFirstValue(PdndMetadataKeys.PdndSignatureIat),
+            exp = md.GetFirstValue(PdndMetadataKeys.PdndSignatureExp),
+            signed_headers = md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaders)
         }
     });
 })
@@ -156,12 +176,16 @@ app.MapGet("/minimal/sanity", (PdndCallerMetadataParameter pdnd) =>
         k.Equals("http.header.agid-jwt-tracking-evidence", StringComparison.OrdinalIgnoreCase) ||
         k.Equals("http.header.agid-jwt-trackingevidence", StringComparison.OrdinalIgnoreCase));
 
+    var hasRawSignature = md.Items.Keys.Any(k =>
+        k.Equals("http.header.agid-jwt-signature", StringComparison.OrdinalIgnoreCase));
+
     return Results.Ok(new
     {
-        ok = !hasRawAuthorization && !hasRawDpop && !hasRawTrackingEvidence,
+        ok = !hasRawAuthorization && !hasRawDpop && !hasRawTrackingEvidence && !hasRawSignature,
         hasRawAuthorizationHeaderCaptured = hasRawAuthorization,
         hasRawDpopHeaderCaptured = hasRawDpop,
-        hasRawTrackingEvidenceHeaderCaptured = hasRawTrackingEvidence
+        hasRawTrackingEvidenceHeaderCaptured = hasRawTrackingEvidence,
+        hasRawSignatureHeaderCaptured = hasRawSignature
     });
 })
 .WithName("GetSanityChecks");
