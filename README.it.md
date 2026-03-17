@@ -237,9 +237,12 @@ builder.Services.AddPdndMetadata(options =>
     options.ParsePdndTrackingEvidence = true;
     options.ParseDpopHeader = true;
     options.ParseDigestHeader = true;
+    options.ParseContentDigestHeader = true;
+    options.ParseAgidJwtSignature = true;
 
     options.CaptureRawTrackingEvidenceHeader = false;
     options.CaptureRawDpopHeader = false;
+    options.CaptureRawSignatureHeader = false;
 
     options.MaxTokenLength = 16_384;
 });
@@ -336,7 +339,7 @@ curl \
   -H "Digest: SHA-256=<base64>" \
   -H "Content-Digest: sha-256=:<base64>:" \
   -H "Agid-JWT-Signature: <jws>" \
-  http://localhost:5043/minimal/pdnd
+  http://localhost:5041/minimal/pdnd
 ```
 
 ## Cosa questa libreria non fa
