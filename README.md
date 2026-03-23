@@ -1,11 +1,10 @@
 # Pdnd.Metadata
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![issues - pdndmetadata](https://img.shields.io/github/issues/engineering87/pdnd-metadata-dotnet)](https://github.com/engineering87/pdnd-metadata-dotnet/issues)
-[![stars - pdndmetadata](https://img.shields.io/github/stars/engineering87/pdnd-metadata-dotnet?style=social)](https://github.com/engineering87/pdnd-metadata-dotnet)
+[![issues - pdndmetadata](https://img.shields.io/github/issues/italia/pdnd-metadata-dotnet)](https://github.com/italia/pdnd-metadata-dotnet/issues)
+[![stars - pdndmetadata](https://img.shields.io/github/stars/italia/pdnd-metadata-dotnet?style=social)](https://github.com/italia/pdnd-metadata-dotnet)
 [![EN](https://img.shields.io/badge/lang-en-blue)](./README.md)
 [![IT](https://img.shields.io/badge/lang-it-green)](./README.it.md)
-[![Sponsor me](https://img.shields.io/badge/Sponsor-❤-pink)](https://github.com/sponsors/engineering87)
 
 **Pdnd.Metadata** is a lightweight, multi-target .NET library (`net8.0` / `net10.0`) designed to extract **request metadata** from inbound HTTP calls in a consistent, HTTP-transport-agnostic format, with dedicated support for **PDND** scenarios (voucher, tracking evidence, digest, DPoP) and standard correlation/tracing signals.
 
@@ -384,7 +383,7 @@ If you'd like to contribute, please fork, fix, commit and send a pull request fo
 
  * [Setting up Git](https://docs.github.com/en/get-started/getting-started-with-git/set-up-git)
  * [Fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
- * [Open an issue](https://github.com/engineering87/pdnd-metadata-dotnet/issues) if you encounter a bug or have a suggestion for improvements/features
+ * [Open an issue](https://github.com/italia/pdnd-metadata-dotnet/issues) if you encounter a bug or have a suggestion for improvements/features
 
 ## License
 Pdnd.Metadata source code is available under MIT License, see license in the source.
