@@ -1,29 +1,26 @@
-publiccodeYmlVersion: "0.5"
+# This repository adheres to the publiccode.yml standard by including this
+# metadata file that makes public software easily discoverable.
+# More info at https://github.com/italia/publiccode.yml
 
+publiccodeYmlVersion: "0.5"
 name: "Pdnd.Metadata"
 url: "https://github.com/italia/pdnd-metadata-dotnet"
 landingURL: "https://github.com/italia/pdnd-metadata-dotnet"
-
 softwareVersion: "1.0.0"
 releaseDate: "2026-03-23"
-
 softwareType: "library"
 developmentStatus: "stable"
-
 platforms:
   - windows
   - linux
   - mac
-
 categories:
   - it-development
   - application-development
-
 organisation:
   name: "Developers Italia"
   url: "https://developers.italia.it"
   type: "government"
-
 description:
   en:
     shortDescription: ".NET library for extracting PDND request metadata"
@@ -48,27 +45,22 @@ description:
       - Supporto a correlazione e tracing
       - Gestione sicura di header e token sensibili
       - Integrazione con ASP.NET Core
-
 legal:
   license: "MIT"
   mainCopyrightOwner: "Francesco Del Re"
-
 maintenance:
   type: "community"
   contacts:
     - name: "Francesco Del Re"
       email: "francesco.delre@protonmail.com"
-
 localisation:
   localisationReady: false
   availableLanguages:
     - en
     - it
-
 intendedAudience:
   scope:
     - government
     - developers
-
 it:
   countryExtensionVersion: "1.0"
