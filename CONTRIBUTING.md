@@ -6,13 +6,13 @@ Thank you for considering contributing to **Pdnd.Metadata**! Every contribution 
 
 ### Reporting Bugs
 
-- Open an [issue](https://github.com/engineering87/pdnd-metadata-dotnet/issues) with a clear title and description.
+- Open an [issue](https://github.com/italia/pdnd-metadata-dotnet/issues) with a clear title and description.
 - Include the .NET version, OS, and steps to reproduce.
 - If applicable, include a minimal code sample or test case.
 
 ### Suggesting Features
 
-- Open an [issue](https://github.com/engineering87/pdnd-metadata-dotnet/issues) describing the use case and expected behavior.
+- Open an [issue](https://github.com/italia/pdnd-metadata-dotnet/issues) describing the use case and expected behavior.
 - If you have a design proposal, include it in the issue description.
 
 ### Pull Requests
@@ -27,7 +27,7 @@ Thank you for considering contributing to **Pdnd.Metadata**! Every contribution 
 ### Development Setup
 
 ```bash
-git clone https://github.com/engineering87/pdnd-metadata-dotnet.git
+git clone https://github.com/italia/pdnd-metadata-dotnet.git
 cd pdnd-metadata-dotnet
 dotnet build src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx
 dotnet test src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx
