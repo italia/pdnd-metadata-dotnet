@@ -1,11 +1,10 @@
 # Pdnd.Metadata
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![issues - pdndmetadata](https://img.shields.io/github/issues/engineering87/pdnd-metadata-dotnet)](https://github.com/engineering87/pdnd-metadata-dotnet/issues)
-[![stars - pdndmetadata](https://img.shields.io/github/stars/engineering87/pdnd-metadata-dotnet?style=social)](https://github.com/engineering87/pdnd-metadata-dotnet)
+[![issues - pdndmetadata](https://img.shields.io/github/issues/italia/pdnd-metadata-dotnet)](https://github.com/italia/pdnd-metadata-dotnet/issues)
+[![stars - pdndmetadata](https://img.shields.io/github/stars/italia/pdnd-metadata-dotnet?style=social)](https://github.com/italia/pdnd-metadata-dotnet)
 [![EN](https://img.shields.io/badge/lang-en-blue)](./README.md)
 [![IT](https://img.shields.io/badge/lang-it-green)](./README.it.md)
-[![Sponsor me](https://img.shields.io/badge/Sponsor-❤-pink)](https://github.com/sponsors/engineering87)
 
 **Pdnd.Metadata** è una libreria .NET leggera progettata per estrarre in modo coerente i **metadati delle richieste** dalle chiamate HTTP in ingresso, in un formato agnostico rispetto al trasporto HTTP, con supporto dedicato per scenari **PDND** (voucher, tracking evidence, digest, DPoP) e per i segnali standard di correlazione/tracing.
 
@@ -383,7 +382,7 @@ Se vuoi contribuire, fai un fork, applica le modifiche, esegui commit e apri una
 
  * [Configurare Git](https://docs.github.com/en/get-started/getting-started-with-git/set-up-git)
  * [Fare il fork del repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
- * [Aprire una issue](https://github.com/engineering87/pdnd-metadata-dotnet/issues) se incontri un bug o hai suggerimenti per miglioramenti/nuove funzionalità
+ * [Aprire una issue](https://github.com/italia/pdnd-metadata-dotnet/issues) se incontri un bug o hai suggerimenti per miglioramenti/nuove funzionalità
 
 ## Licenza
 Il codice sorgente di Pdnd.Metadata è distribuito con licenza MIT; consulta il file di licenza nel repository.
