@@ -1,0 +1,74 @@
+publiccodeYmlVersion: "0.5"
+
+name: "Pdnd.Metadata"
+url: "https://github.com/italia/pdnd-metadata-dotnet"
+landingURL: "https://github.com/italia/pdnd-metadata-dotnet"
+
+softwareVersion: "1.0.0"
+releaseDate: "2026-03-23"
+
+softwareType: "library"
+developmentStatus: "stable"
+
+platforms:
+  - windows
+  - linux
+  - mac
+
+categories:
+  - it-development
+  - application-development
+
+organisation:
+  name: "Developers Italia"
+  url: "https://developers.italia.it"
+  type: "government"
+
+description:
+  en:
+    shortDescription: ".NET library for extracting PDND request metadata"
+    longDescription: >
+      Lightweight multi-target .NET library for extracting request metadata from HTTP calls
+      with support for PDND interoperability scenarios including voucher, DPoP, digest,
+      tracking evidence and distributed tracing metadata.
+    features:
+      - Automatic PDND metadata extraction
+      - Standardized metadata snapshot
+      - Correlation and distributed tracing support
+      - Safe handling of sensitive headers
+      - ASP.NET Core integration
+  it:
+    shortDescription: "Libreria .NET per estrarre i metadati PDND dalle richieste HTTP"
+    longDescription: >
+      Libreria .NET multi-target per l’estrazione dei metadati delle richieste HTTP in ingresso
+      con supporto agli scenari PDND come voucher, DPoP, digest, tracking evidence e tracing.
+    features:
+      - Estrazione automatica dei metadati PDND
+      - Snapshot standard dei metadati
+      - Supporto a correlazione e tracing
+      - Gestione sicura di header e token sensibili
+      - Integrazione con ASP.NET Core
+
+legal:
+  license: "MIT"
+  mainCopyrightOwner: "Francesco Del Re"
+
+maintenance:
+  type: "community"
+  contacts:
+    - name: "Francesco Del Re"
+      email: "francesco.delre@protonmail.com"
+
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - en
+    - it
+
+intendedAudience:
+  scope:
+    - government
+    - developers
+
+it:
+  countryExtensionVersion: "1.0"
