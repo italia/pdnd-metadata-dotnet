@@ -26,6 +26,10 @@ La libreria nasce per un’esigenza molto pratica: quando esponi un e-service co
 | [Cosa questa libreria non fa](#cosa-questa-libreria-non-fa) | Non-obiettivi espliciti (validazione, enforcement, chiamate API PDND) |
 | [Schema chiavi canoniche](#schema-chiavi-canoniche) | Riferimento completo di tutte le chiavi di metadati estratte |
 | [Riferimenti ufficiali PDND](#riferimenti-ufficiali-pdnd) | Link alla documentazione ufficiale |
+| [Autore e maintainer](#autore-e-maintainer) | Proprietà e manutenzione del progetto |
+| [Contribuire](#contribuire) | Come contribuire al progetto |
+| [Licenza](#licenza) | Informazioni sulla licenza |
+| [Contatti](#contatti) | Informazioni di contatto |
 
 ## Perché esiste questa libreria
 
@@ -373,6 +377,12 @@ Questo schema e pensato come **riferimento di community** per standardizzare l'e
 - Tracing – Manuale Operativo ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-tracing))
 - Approfondimento DPoP ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
 - Release notes ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/release-note/2025))
+
+## Autore e maintainer
+| [![Francesco Del Re](https://github.com/engineering87.png?size=100)](https://github.com/engineering87) |
+| ------------------------------------------------------------------------------------------------------ |
+| **Francesco Del Re** |
+| Autore e maintainer |
 
 ## Contribuire
 Grazie per aver considerato di contribuire al codice sorgente!
