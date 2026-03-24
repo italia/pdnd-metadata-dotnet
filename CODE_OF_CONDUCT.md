@@ -1,53 +1,69 @@
-# Contributor Covenant Code of Conduct
+# Codice di condotta
 
-## Our Pledge
+## 1. Scopo
 
-We as members, contributors, and leaders pledge to make participation in our
-community a harassment-free experience for everyone, regardless of age, body
-size, visible or invisible disability, ethnicity, sex characteristics, gender
-identity and expression, level of experience, education, socio-economic status,
-nationality, personal appearance, race, religion, or sexual identity
-and orientation.
+Uno degli obiettivi principali di Developers Italia è quello di includere il maggior numero di contributori, con il background più vario e diversificato possibile. Pertanto, ci impegniamo a fornire un ambiente amichevole, sicuro e accogliente per tutti, indipendentemente dal genere, dall'orientamento sessuale, dalle abilità, dall'etnia, dallo status socioeconomico e dalla religione (o dalla sua mancanza).
 
-## Our Standards
+Questo codice di condotta delinea le nostre aspettative per tutti coloro che partecipano alla nostra comunità, nonché le conseguenze per comportamenti inaccettabili.
 
-Examples of behavior that contributes to a positive environment:
+Invitiamo tutti coloro che partecipano a Developers Italia a aiutarci a creare esperienze positive e positive per tutti.
 
-* Using welcoming and inclusive language
-* Being respectful of differing viewpoints and experiences
-* Gracefully accepting constructive criticism
-* Focusing on what is best for the community
-* Showing empathy towards other community members
+## 2. Cittadinanza open source
 
-Examples of unacceptable behavior:
+Un obiettivo supplementare di questo Codice di condotta è aumentare la cittadinanza open source incoraggiando i partecipanti a riconoscere e rafforzare le relazioni tra le nostre azioni e i loro effetti sulla nostra comunità.
 
-* The use of sexualized language or imagery and unwelcome sexual attention or advances
-* Trolling, insulting or derogatory comments, and personal or political attacks
-* Public or private harassment
-* Publishing others' private information without explicit permission
-* Other conduct which could reasonably be considered inappropriate in a professional setting
+Le comunità rispecchiano le società in cui esistono e l'azione positiva è essenziale per contrastare le molte forme di disuguaglianza e abusi di potere che esistono nella società.
 
-## Enforcement Responsibilities
+Se vedi qualcuno che sta facendo uno sforzo in più per garantire che la nostra comunità sia accogliente, amichevole e incoraggia tutti i partecipanti a contribuire nella massima misura, vogliamo sapere.
 
-Project maintainers are responsible for clarifying and enforcing our standards of
-acceptable behavior and will take appropriate and fair corrective action in
-response to any behavior that they deem inappropriate, threatening, offensive,
-or harmful.
+## 3. Comportamento previsto
 
-## Scope
+I seguenti comportamenti sono previsti e richiesti a tutti i membri della comunità:
 
-This Code of Conduct applies within all community spaces, and also applies when
-an individual is officially representing the community in public spaces.
+- Partecipare in modo autentico e attivo. In tal modo, contribuisci alla salute e alla longevità di questa comunità.
+- Esercitare considerazione e rispetto nei propri discorsi e azioni.
+- Tentativo di collaborazione prima del conflitto.
+- Astenersi dal comportamento umiliante, discriminatorio o molesto.
+- Sii consapevole di ciò che ti circonda e dei tuoi compagni partecipanti. Avvisare i leader della comunità se si nota una situazione pericolosa, qualcuno in difficoltà o violazioni di questo Codice di condotta, anche se sembrano irrilevanti.
+- Ricorda che le sedi di eventi comunitari possono essere condivise con membri del pubblico; si prega di essere rispettosi verso tutti i clienti di questi luoghi.
 
-## Enforcement
+## 4. Comportamento inaccettabile
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainer at **francesco.delre[at]protonmail.com**.
+I seguenti comportamenti sono considerati molestie e inaccettabili all'interno della nostra comunità:
 
-All complaints will be reviewed and investigated promptly and fairly.
+- Violenza, minacce di violenza o linguaggio violento diretto contro un'altra persona.
+- Scherzi e linguaggio sessista, razzista, omofobo, transfobico, o comunque discriminatorio.
+- Pubblicare o visualizzare materiale sessualmente esplicito o violento.
+- Insulti personali, in particolare quelli relativi al genere, orientamento sessuale, razza, religione o disabilità.
+- Attenzione sessuale sgradita. Ciò include commenti o battute sessualizzate; approcci sessuali inappropriati, toccanti e indesiderati.
+- Intimidazione intenzionale, stalking o seguito (online o di persona).
+- Sostenendo o incoraggiando uno qualsiasi dei suddetti comportamenti.
+- Perturbazione continua degli eventi della comunità, inclusi discorsi e presentazioni.
 
-## Attribution
+## 5. Conseguenze del comportamento inaccettabile
 
-This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org),
-version 2.1, available at
-[https://www.contributor-covenant.org/version/2/1/code_of_conduct.html](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html).
+Il comportamento inaccettabile da parte di qualsiasi membro della comunità, inclusi gli sponsor e coloro che hanno l'autorità decisionale, non sarà tollerato.
+
+Ci si aspetta che chiunque chieda di smettere di comportarsi in modo inaccettabile si adegui immediatamente.
+
+Se un membro della comunità si comporta in modo inaccettabile, gli organizzatori della comunità possono intraprendere qualsiasi azione che ritengano appropriata, fino a includere un divieto temporaneo o l'espulsione definitiva dalla comunità senza preavviso.
+
+## 6. Linee guida per la segnalazione
+
+Se sei soggetto a un comportamento inaccettabile o ne sei testimone o se hai altre preoccupazioni, ti preghiamo di avvisare un organizzatore della comunità il prima possibile. Puoi farlo inviando una e-mail a `coc-report@developers.italia.it`.
+
+Inoltre, gli organizzatori della comunità sono disponibili per aiutare i membri della comunità a impegnarsi con le forze dell'ordine locali o per aiutare altrimenti coloro che vivono comportamenti inaccettabili a sentirsi al sicuro. Nel contesto di eventi di persona, gli organizzatori forniranno anche le scorte come desiderato dalla persona che soffre.
+
+## 7. Affrontare i reclami
+
+Se ritieni di essere stato accusato ingiustamente di violare questo Codice di condotta, dovresti informare i gestori di Developers Italia con una descrizione sintetica del tuo reclamo. Il tuo reclamo verrà gestito in conformità con le nostre attuali politiche di governance.
+
+## 8. Ambito di applicazione
+
+Ci aspettiamo che tutti i partecipanti alla comunità (contributori, pagati o meno, sponsor e altri ospiti) si attengano a questo Codice di condotta in tutte le sedi della comunità, online e di persona, nonché in tutte le comunicazioni individuali relative alla comunità attività commerciale.
+
+Questo codice di condotta e le relative procedure si applicano anche a comportamenti inaccettabili che si verificano al di fuori dell'ambito delle attività della comunità quando tale comportamento ha il potenziale di influire negativamente sulla sicurezza e il benessere dei membri della comunità.
+
+## 9. Informazioni di contatto
+
+Puoi raggiungere i gestori di Developers Italia all'indirizzo `coc-report@developers.italia`.
