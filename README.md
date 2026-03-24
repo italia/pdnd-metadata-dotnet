@@ -26,6 +26,10 @@ The library targets a very practical need: when you expose an e-service as a **p
 | [What this library does not do](#what-this-library-does-not-do) | Explicit non-goals (validation, enforcement, PDND API calls) |
 | [Canonical Keys Schema](#canonical-keys-schema) | Full reference of all extracted metadata keys |
 | [Official PDND references](#official-pdnd-references) | Links to official documentation |
+| [Author and maintainer](#author-and-maintainer) | Project ownership and maintenance |
+| [Contributing](#contributing) | How to contribute to the project |
+| [License](#license) | License information |
+| [Contact](#contact) | Contact information |
 
 ## Why this library exists
 
@@ -375,7 +379,13 @@ This schema is intended as a **community reference** to standardize PDND metadat
 - DPoP deep dive ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
 - Release notes ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/release-note/2025))
 
-### Contributing
+## Author and maintainer
+| [![Francesco Del Re](https://github.com/engineering87.png?size=100)](https://github.com/engineering87) |
+| ------------------------------------------------------------------------------------------------------ |
+| **Francesco Del Re** |
+| Author & Maintainer |
+
+## Contributing
 Thank you for considering to help out with the source code!
 If you'd like to contribute, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base.
 
