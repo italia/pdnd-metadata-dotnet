@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![issues - pdndmetadata](https://img.shields.io/github/issues/italia/pdnd-metadata-dotnet)](https://github.com/italia/pdnd-metadata-dotnet/issues)
+[![Nuget](https://img.shields.io/nuget/v/Pdnd.Metadata?style=plastic)](https://www.nuget.org/packages/Pdnd.Metadata)
+![NuGet Downloads](https://img.shields.io/nuget/dt/Pdnd.Metadata)
 [![stars - pdndmetadata](https://img.shields.io/github/stars/italia/pdnd-metadata-dotnet?style=social)](https://github.com/italia/pdnd-metadata-dotnet)
 [![EN](https://img.shields.io/badge/lang-en-blue)](./README.EN.md)
 [![IT](https://img.shields.io/badge/lang-it-green)](./README.md)
