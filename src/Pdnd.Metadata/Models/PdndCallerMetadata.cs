@@ -1,14 +1,16 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 namespace Pdnd.Metadata.Models;
 
 /// <summary>
 /// Aggregates metadata about the caller/request in a normalized structure.
+/// This class is thread-safe for concurrent Add operations.
 /// </summary>
 public sealed class PdndCallerMetadata
 {
     private readonly Dictionary<string, List<PdndMetadataItem>> _items =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _lock = new();
 
     /// <summary>
     /// Gets the UTC timestamp when this metadata snapshot was created.
@@ -27,10 +29,18 @@ public sealed class PdndCallerMetadata
     /// Each call returns a snapshot; items added after the call are not reflected.
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<PdndMetadataItem>> Items
-        => _items.ToDictionary(
-            kvp => kvp.Key,
-            kvp => (IReadOnlyList<PdndMetadataItem>)kvp.Value.ToArray(),
-            StringComparer.OrdinalIgnoreCase);
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _items.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => (IReadOnlyList<PdndMetadataItem>)kvp.Value.ToArray(),
+                    StringComparer.OrdinalIgnoreCase);
+            }
+        }
+    }
 
     /// <summary>
     /// Adds a metadata item to the snapshot.
@@ -41,13 +51,16 @@ public sealed class PdndCallerMetadata
         if (string.IsNullOrWhiteSpace(item.Key))
             return;
 
-        if (!_items.TryGetValue(item.Key, out var list))
+        lock (_lock)
         {
-            list = new List<PdndMetadataItem>();
-            _items[item.Key] = list;
-        }
+            if (!_items.TryGetValue(item.Key, out var list))
+            {
+                list = new List<PdndMetadataItem>();
+                _items[item.Key] = list;
+            }
 
-        list.Add(item);
+            list.Add(item);
+        }
     }
 
     /// <summary>
@@ -71,10 +84,13 @@ public sealed class PdndCallerMetadata
     /// <returns>The first value if present; otherwise <c>null</c>.</returns>
     public string? GetFirstValue(string key)
     {
-        if (_items.TryGetValue(key, out var list) && list.Count > 0)
-            return list[0].Value;
+        lock (_lock)
+        {
+            if (_items.TryGetValue(key, out var list) && list.Count > 0)
+                return list[0].Value;
 
-        return null;
+            return null;
+        }
     }
 
     /// <summary>
@@ -84,10 +100,13 @@ public sealed class PdndCallerMetadata
     /// <returns>All values; an empty sequence if not present.</returns>
     public IEnumerable<string> GetValues(string key)
     {
-        if (_items.TryGetValue(key, out var list))
-            return list.Select(x => x.Value);
+        lock (_lock)
+        {
+            if (_items.TryGetValue(key, out var list))
+                return list.Select(x => x.Value).ToArray();
 
-        return Array.Empty<string>();
+            return Array.Empty<string>();
+        }
     }
 
     /// <summary>
@@ -97,10 +116,13 @@ public sealed class PdndCallerMetadata
     public PdndCallerMetadata Clone()
     {
         var clone = new PdndCallerMetadata(CreatedAtUtc);
-        foreach (var kvp in _items)
+        lock (_lock)
         {
-            foreach (var item in kvp.Value)
-                clone.Add(item);
+            foreach (var kvp in _items)
+            {
+                foreach (var item in kvp.Value)
+                    clone.Add(item);
+            }
         }
 
         return clone;

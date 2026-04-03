@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 namespace Pdnd.Metadata.Extraction.Pdnd;
 
@@ -26,12 +26,17 @@ public static class DigestParser
         var parts = digestHeader.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var part in parts)
         {
+            // Use first '=' only to split algorithm from value (base64 may contain '=')
             var eq = part.IndexOf('=');
             if (eq <= 0 || eq >= part.Length - 1)
                 continue;
 
             var alg = part.Substring(0, eq).Trim();
-            var val = part.Substring(eq + 1).Trim().Trim('"');
+            // Take everything after the first '=' to preserve base64 padding
+            var val = part.Substring(eq + 1).Trim();
+            // Remove surrounding quotes if present
+            if (val.Length >= 2 && val[0] == '"' && val[val.Length - 1] == '"')
+                val = val.Substring(1, val.Length - 2);
 
             if (string.IsNullOrWhiteSpace(alg) || alg.Contains(' ') || string.IsNullOrWhiteSpace(val))
                 continue;

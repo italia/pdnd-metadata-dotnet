@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 namespace Pdnd.Metadata.Options;
 
@@ -7,17 +7,7 @@ namespace Pdnd.Metadata.Options;
 /// </summary>
 public sealed class PdndMetadataOptions
 {
-    /// <summary>
-    /// Gets or sets whether all headers should be captured as raw metadata items.
-    /// When enabled, headers are still subject to <see cref="HeaderDenyList"/>.
-    /// </summary>
-    public bool CaptureAllHeaders { get; set; } = true;
-
-    /// <summary>
-    /// Gets the list of header names that must never be captured as raw metadata (e.g., secrets).
-    /// Comparisons are case-insensitive.
-    /// </summary>
-    public ISet<string> HeaderDenyList { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    private readonly HashSet<string> _headerDenyList = new(StringComparer.OrdinalIgnoreCase)
     {
         // Do not store raw tokens/cookies in metadata.
         "Authorization",
@@ -25,11 +15,7 @@ public sealed class PdndMetadataOptions
         "Set-Cookie"
     };
 
-    /// <summary>
-    /// Gets the allow-list of header names to capture when <see cref="CaptureAllHeaders"/> is false.
-    /// Comparisons are case-insensitive.
-    /// </summary>
-    public ISet<string> HeaderAllowList { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    private readonly HashSet<string> _headerAllowList = new(StringComparer.OrdinalIgnoreCase)
     {
         "User-Agent",
         "X-Request-Id",
@@ -50,6 +36,24 @@ public sealed class PdndMetadataOptions
         "Content-Digest",
         "DPoP"
     };
+
+    /// <summary>
+    /// Gets or sets whether all headers should be captured as raw metadata items.
+    /// When enabled, headers are still subject to <see cref="HeaderDenyList"/>.
+    /// </summary>
+    public bool CaptureAllHeaders { get; set; } = true;
+
+    /// <summary>
+    /// Gets the list of header names that must never be captured as raw metadata (e.g., secrets).
+    /// Comparisons are case-insensitive. The underlying set uses <see cref="StringComparer.OrdinalIgnoreCase"/>.
+    /// </summary>
+    public ISet<string> HeaderDenyList => _headerDenyList;
+
+    /// <summary>
+    /// Gets the allow-list of header names to capture when <see cref="CaptureAllHeaders"/> is false.
+    /// Comparisons are case-insensitive. The underlying set uses <see cref="StringComparer.OrdinalIgnoreCase"/>.
+    /// </summary>
+    public ISet<string> HeaderAllowList => _headerAllowList;
 
     private int _maxHeaderValuesPerName = 10;
     private int _maxValueLength = 2048;
