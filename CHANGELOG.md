@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-07-XX
+## [1.0.0]
 
 ### Added
-- Core metadata extraction library (`Pdnd.Metadata`) — framework-agnostic.
-- ASP.NET Core integration (`Pdnd.Metadata.AspNetCore`) — middleware, DI, model binding, Minimal API support.
+- Core metadata extraction library (`Pdnd.Metadata`): framework-agnostic.
+- ASP.NET Core integration (`Pdnd.Metadata.AspNetCore`): middleware, DI, model binding, Minimal API support.
 - PDND voucher JWT decoding (best-effort, no signature validation) with all standard and PDND-specific claims (`purposeId`, `clientId`, `organizationId`, `dnonce`).
 - `Agid-JWT-TrackingEvidence` header extraction (both naming variants).
 - `Agid-JWT-Signature` header extraction (INTEGRITY_REST pattern support).
