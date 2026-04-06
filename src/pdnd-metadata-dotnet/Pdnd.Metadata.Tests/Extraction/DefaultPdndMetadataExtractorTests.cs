@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using System.Net;
 using System.Security.Claims;
@@ -165,6 +165,57 @@ public class DefaultPdndMetadataExtractorTests
         var md = new DefaultPdndMetadataExtractor().Extract(ctx, new PdndMetadataOptions { NormalizeForwardedHeaders = true });
 
         md.GetFirstValue(PdndMetadataKeys.NetForwardedFor).Should().Be("1.2.3.4, 5.6.7.8");
+    }
+
+    [Fact]
+    public void Extract_ShouldHandleIPv6InForwardedHeader_WithBrackets()
+    {
+        var ctx = new PdndRequestContext
+        {
+            Method = "GET",
+            Headers = new[]
+            {
+                new PdndRequestHeader("Forwarded", new[] { "for=\"[2001:db8::1]\", for=\"[::1]\"" })
+            }
+        };
+
+        var md = new DefaultPdndMetadataExtractor().Extract(ctx, new PdndMetadataOptions { NormalizeForwardedHeaders = true });
+
+        md.GetFirstValue(PdndMetadataKeys.NetForwardedFor).Should().Be("2001:db8::1, ::1");
+    }
+
+    [Fact]
+    public void Extract_ShouldHandleIPv6InForwardedHeader_WithoutQuotes()
+    {
+        var ctx = new PdndRequestContext
+        {
+            Method = "GET",
+            Headers = new[]
+            {
+                new PdndRequestHeader("Forwarded", new[] { "for=[2001:db8:cafe::17], for=[::ffff:192.0.2.1]" })
+            }
+        };
+
+        var md = new DefaultPdndMetadataExtractor().Extract(ctx, new PdndMetadataOptions { NormalizeForwardedHeaders = true });
+
+        md.GetFirstValue(PdndMetadataKeys.NetForwardedFor).Should().Be("2001:db8:cafe::17, ::ffff:192.0.2.1");
+    }
+
+    [Fact]
+    public void Extract_ShouldHandleMixedIPv4AndIPv6InForwardedHeader()
+    {
+        var ctx = new PdndRequestContext
+        {
+            Method = "GET",
+            Headers = new[]
+            {
+                new PdndRequestHeader("Forwarded", new[] { "for=192.0.2.1, for=\"[2001:db8::1]\", for=203.0.113.5" })
+            }
+        };
+
+        var md = new DefaultPdndMetadataExtractor().Extract(ctx, new PdndMetadataOptions { NormalizeForwardedHeaders = true });
+
+        md.GetFirstValue(PdndMetadataKeys.NetForwardedFor).Should().Be("192.0.2.1, 2001:db8::1, 203.0.113.5");
     }
 
     [Fact]

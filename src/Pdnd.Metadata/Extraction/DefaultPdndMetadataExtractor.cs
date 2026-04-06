@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using Pdnd.Metadata.Extraction.Jwt;
 using Pdnd.Metadata.Extraction.Pdnd;
@@ -256,6 +256,11 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                     if (token.StartsWith("for=", StringComparison.OrdinalIgnoreCase))
                     {
                         var val = token.Substring(4).Trim().Trim('"');
+
+                        // Remove IPv6 brackets if present (RFC 7239 §4)
+                        if (val.Length >= 2 && val[0] == '[' && val[val.Length - 1] == ']')
+                            val = val.Substring(1, val.Length - 2);
+
                         if (!string.IsNullOrWhiteSpace(val))
                             chain.Add(val);
                     }
