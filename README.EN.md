@@ -16,38 +16,38 @@ The library targets a very practical need: when you expose an e-service as a **p
 
 | Section | What you’ll find |
 |---|---|
-| [Why this library exists](#why-this-library-exists) | The problem it solves in real provider services |
-| [PDND overview](#pdnd-overview) | What PDND is and why the inbound request carries tokens |
-| [What Pdnd.Metadata does](#what-pdndmetadata-does) | Responsibilities, data model, and boundaries |
-| [Extracted fields](#extracted-fields) | Canonical keys produced by the extractor (generic + PDND-specific) |
-| [Safety model](#safety-model) | What is never stored, fail-soft behavior, recommended defaults |
-| [Packages layout](#packages-layout) | Core vs ASP.NET Core integration |
+| [Why this library](#why-this-library) | The problem it solves in real provider services |
+| [What is PDND](#what-is-pdnd) | What PDND is and why the inbound request carries tokens |
+| [Main features](#main-features) | Responsibilities, data model, and boundaries |
+| [Which metadata are extracted](#which-metadata-are-extracted) | Canonical keys produced by the extractor (generic + PDND-specific) |
+| [Security and privacy](#security-and-privacy) | What is never stored, fail-soft behavior, recommended defaults |
+| [How the library is organized](#how-the-library-is-organized) | Core vs ASP.NET Core integration |
 | [Quick start (ASP.NET Core)](#quick-start-aspnet-core) | Registration, middleware, and consuming metadata |
 | [Recommended production configuration](#recommended-production-configuration) | Conservative posture and governance notes |
-| [Sample API](#sample-api) | Endpoints used to verify extraction locally |
-| [What this library does not do](#what-this-library-does-not-do) | Explicit non-goals (validation, enforcement, PDND API calls) |
-| [Canonical Keys Schema](#canonical-keys-schema) | Full reference of all extracted metadata keys |
-| [Official PDND references](#official-pdnd-references) | Links to official documentation |
+| [API examples](#api-examples) | Endpoints used to verify extraction locally |
+| [What the library does not do](#what-the-library-does-not-do) | Explicit non-goals (validation, enforcement, PDND API calls) |
+| [List of extracted keys](#list-of-extracted-keys) | Full reference of all extracted metadata keys |
+| [Official PDND documentation](#official-pdnd-documentation) | Links to official documentation |
 | [Author and maintainer](#author-and-maintainer) | Project ownership and maintenance |
-| [Contributing](#contributing) | How to contribute to the project |
+| [How to contribute](#how-to-contribute) | How to contribute to the project |
 | [License](#license) | License information |
 | [Contact](#contact) | Contact information |
 
-## Why this library exists
+## Why this library
 
 In provider services, metadata extraction tends to grow organically:
-- different teams parse different headers differently,
-- correlation IDs get duplicated or overwritten,
-- PDND tokens are treated as raw strings (with the risk of accidental logs),
-- and the same logic is re-implemented in controllers, minimal APIs, or gateway filters.
+- different teams parse different headers differently;
+- correlation IDs get duplicated or overwritten;
+- PDND tokens are treated as raw strings (with the risk of accidental logs);
+- the same logic is re-implemented in controllers, minimal APIs, or gateway filters.
 
 **Pdnd.Metadata** standardizes this work:
-- it collects metadata into a single, structured snapshot (`PdndCallerMetadata`),
-- it extracts PDND-related information in a best-effort, non-blocking way,
-- it makes “safe defaults” achievable (no raw `Authorization`, no signed blobs by default),
-- and it keeps ASP.NET Core integration separate from the core extraction logic.
+- it collects metadata into a single, structured snapshot (`PdndCallerMetadata`);
+- it extracts PDND-related information in a best-effort, non-blocking way;
+- it makes “safe defaults” achievable (no raw `Authorization`, no signed blobs by default);
+- it keeps ASP.NET Core integration separate from the core extraction logic.
 
-## PDND overview
+## What is PDND
 
 **PDND** enables secure and traceable exchange of services/data between administrations. In the most common interaction pattern, the consumer calls the provider by sending a **voucher** (JWT) in:
 
@@ -61,37 +61,37 @@ The library also captures standard correlation/tracing signals commonly used in 
 
 Finally, the platform includes **DPoP** flows (proof-of-possession). Official reference: DPoP deep dive. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
 
-## What Pdnd.Metadata does
+## Main features
 
-At runtime, the library builds a **metadata snapshot** representing what can be safely and usefully inferred from the inbound request:
+At runtime, the library builds a **metadata snapshot** representing all the information that can be safely and usefully inferred from the inbound HTTP request:
 
-1. **Generic request metadata**
-   - method/scheme/host/path/query
+1. **General request metadata**
+   - `method`, `scheme`, `host`, `path`, `query`
    - remote/local IP and ports
-   - normalized forwarded chain (best-effort)
-   - correlation and tracing hints (W3C trace context + common request ids)
+   - normalized `forwarded` chain (best-effort)
+   - correlation and tracing hints (`traceparent` W3C, common request ids)
    - selected headers (configurable capture rules)
 
-2. **PDND-aware extraction (best-effort)**
-   - voucher: parse the JWT JOSE header (alg/kid/typ) and payload, extract standard and PDND-specific claims
-   - tracking evidence: parse the token header/payload and extract selected fields
-   - digest: parse the `Digest` header value into a normalized (alg, value) pair
-   - content-digest: parse the `Content-Digest` header (RFC 9530) into a normalized (alg, value) pair
-   - DPoP: parse the proof token header/payload and extract selected fields (incl. ath, nonce per RFC 9449)
-   - signature: parse the `Agid-JWT-Signature` header for request integrity fields
+2. **PDND metadata extraction (best-effort)**
+   - voucher: parse the JWT JOSE header (`alg`, `kid`, `typ`) and payload, extract standard and PDND-specific claims
+   - tracking evidence: parse the token header/payload and extract selected metadata
+   - digest: parse the `Digest` header value into a normalized (`alg`, `value`) pair
+   - content-digest: parse the `Content-Digest` header (RFC 9530) into a normalized (`alg`, `value`) pair
+   - DPoP: parse the proof token header/payload and extract selected metadata (including `ath`, `nonce` per RFC 9449)
+   - signature: parse the `Agid-JWT-Signature` header for request integrity metadata
 
 3. **Fail-soft behavior**
-   - missing headers are ignored
-   - parsing errors are swallowed
-   - oversized tokens are skipped (guard-rail through `MaxTokenLength`)
+   - missing headers are ignored;
+   - parsing errors are swallowed;
+   - oversized tokens are skipped (guard-rail through `MaxTokenLength`).
 
-The output is designed to be stable and easy to integrate with logging, auditing, or internal tracing dashboards without leaking secrets.
+The output is designed to be stable and easy to integrate with logging, audit, or internal tracing dashboards without leaking secrets.
 
-## Extracted fields
+## Which metadata are extracted
 
-The snapshot is a `PdndCallerMetadata` containing items indexed by canonical keys.
+The snapshot is a `PdndCallerMetadata` object containing all **metadata** extracted from the request, organized by **canonical keys**.
 
-### Generic keys
+### General canonical keys
 
 - `http.method`, `http.scheme`, `http.host`, `http.path`, `http.query`
 - `net.remote_ip`, `net.remote_port`, `net.local_ip`, `net.local_port`, `net.forwarded_for`
@@ -99,9 +99,9 @@ The snapshot is a `PdndCallerMetadata` containing items indexed by canonical key
 - `trace.traceparent`, `trace.tracestate`, `trace.baggage`
 - `http.header.<lowercase-name>` (only if header capture is enabled and the header is not denied)
 
-> Note on forwarded headers: values like `Forwarded` / `X-Forwarded-For` are trustworthy only if they are set by a trusted reverse proxy / API gateway. In open networks they are user-controllable and must not be treated as authoritative identity signals.
+> **Note:** values like `Forwarded` / `X-Forwarded-For` are trustworthy only if set by a trusted reverse proxy or API gateway. In open networks they are user-controllable and must not be treated as authoritative identity signals.
 
-### PDND keys
+### PDND canonical keys
 
 #### Voucher (from `Authorization: Bearer ...`)
 - `pdnd.voucher.alg`, `pdnd.voucher.kid`, `pdnd.voucher.typ` (JOSE header)
@@ -136,8 +136,8 @@ Reference: digest notes in voucher FAQ. ([developer.pagopa.it](https://developer
 #### DPoP (from `DPoP`)
 - `pdnd.dpop.alg`, `pdnd.dpop.kid`, `pdnd.dpop.typ`
 - `pdnd.dpop.htm`, `pdnd.dpop.htu`, `pdnd.dpop.jti`, `pdnd.dpop.iat`, `pdnd.dpop.exp` (when present)
-- `pdnd.dpop.ath` (access token hash, RFC 9449 u00a74.2)
-- `pdnd.dpop.nonce` (server-provided nonce, RFC 9449 u00a74.3)
+- `pdnd.dpop.ath` (access token hash, RFC 9449 §4.2)
+- `pdnd.dpop.nonce` (server-provided nonce, RFC 9449 §4.3)
 
 Reference: DPoP deep dive. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
 
@@ -156,7 +156,7 @@ RFC 9530 replaces the legacy `Digest` header with `Content-Digest` using structu
 
 Used in PDND pattern INTEGRITY_REST_01 for request signing.
 
-## Safety model
+## Security and privacy
 
 ### What is never stored (raw)
 By default, the library never stores:
@@ -167,8 +167,9 @@ This prevents accidental persistence or logging of secrets.
 
 ### Signed blobs (raw)
 By default, the library does **not** store raw values for:
-- Tracking Evidence header
-- DPoP header
+- Tracking Evidence header;
+- DPoP header;
+- Agid-JWT-Signature header.
 
 Instead, it parses them best-effort and stores selected fields under canonical `pdnd.*` keys. This keeps output inspectable while reducing leakage risk.
 
@@ -180,7 +181,7 @@ Instead, it parses them best-effort and stores selected fields under canonical `
 ### Operational note
 Capturing headers can still collect sensitive data if your service (or gateways) inject domain-specific headers that contain personal information. For production use, a strict allow-list is recommended (see below).
 
-## Packages layout
+## How the library is organized
 
 Both packages target **`net8.0`** (LTS) and **`net10.0`**, so they work on the .NET versions most commonly used in PA production environments.
 
@@ -325,7 +326,7 @@ A conservative approach:
 
 The library already enforces the most important rule by default: raw `Authorization` is never stored.
 
-## Sample API
+## API examples
 
 The sample project is meant to let you validate integration quickly, without logging raw tokens.
 
@@ -348,7 +349,7 @@ curl \
   http://localhost:5041/minimal/pdnd
 ```
 
-## What this library does not do
+## What the library does not do
 
 This is intentionally an extraction layer, not a security enforcement layer.
 
@@ -359,7 +360,7 @@ This is intentionally an extraction layer, not a security enforcement layer.
 
 If you need validation/enforcement, place it in your auth layer (gateway/service middleware) and use Pdnd.Metadata strictly as an observability/diagnostics/audit-friendly snapshot.
 
-## Canonical Keys Schema
+## List of extracted keys
 
 For a complete, structured reference of all 55+ canonical metadata keys extracted by this library, see the **[PDND Metadata Schema](./src/PDND_METADATA_SCHEMA.md)** document.
 
@@ -371,7 +372,7 @@ The schema covers:
 
 This schema is intended as a **community reference** to standardize PDND metadata extraction across .NET implementations.
 
-## Official PDND references
+## Official PDND documentation
 
 - PDND Interoperabilità – Guides hub ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides))
 - Voucher (usage) ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher))
@@ -387,7 +388,7 @@ This schema is intended as a **community reference** to standardize PDND metadat
 | **Francesco Del Re** |
 | Author & Maintainer |
 
-## Contributing
+## How to contribute
 Thank you for considering to help out with the source code!
 If you'd like to contribute, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base.
 

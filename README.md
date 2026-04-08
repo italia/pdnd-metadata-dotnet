@@ -8,46 +8,46 @@
 [![EN](https://img.shields.io/badge/lang-en-blue)](./README.EN.md)
 [![IT](https://img.shields.io/badge/lang-it-green)](./README.md)
 
-**Pdnd.Metadata** è una libreria .NET leggera pensata per estrarre in modo strutturato i **metadati delle richieste HTTP in ingresso**, in un formato indipendente dal framework web, con supporto dedicato per scenari **PDND** (voucher, tracking evidence, digest, DPoP) e per i segnali standard di correlazione e tracing.
+**Pdnd.Metadata** è una libreria .NET leggera e multi-target (`net8.0` / `net10.0`) che consente di estrarre in modo strutturato i **metadati delle richieste HTTP in ingresso**. È indipendente dal framework web utilizzato e offre un supporto specifico per scenari **PDND** (voucher, tracking evidence, digest, DPoP) e per i principali segnali di correlazione e tracing.
 
-La libreria nasce da un’esigenza molto pratica: quando esponi un e-service come **provider (erogatore)**, devi spesso capire *chi sta chiamando*, *con quale contesto PDND*, e *come la chiamata può essere correlata e auditata*, senza disseminare parsing “ad hoc” degli header tra controller, minimal API e middleware.
+La libreria nasce da esigenze concrete di chi espone e-service come **provider (erogatore)**: spesso è necessario sapere *chi sta chiamando*, *con quale contesto PDND* e *come correlare o tracciare la chiamata*, senza dover scrivere ogni volta codice personalizzato per il parsing degli header nei controller, nelle minimal API o nei middleware.
 
 ## Contenuti
 
 | Sezione | Cosa troverai |
 |---|---|
-| [Perché esiste questa libreria](#perché-esiste-questa-libreria) | Il problema che risolve nei servizi provider reali |
-| [Panoramica PDND](#panoramica-pdnd) | Cos’è la PDND e perché la richiesta in ingresso trasporta token |
-| [Cosa fa Pdnd.Metadata](#cosa-fa-pdndmetadata) | Responsabilità, modello dati e confini |
-| [Campi estratti](#campi-estratti) | Chiavi canoniche prodotte dall’estrattore (generiche + specifiche PDND) |
-| [Modello di sicurezza](#modello-di-sicurezza) | Cosa non viene mai memorizzato, comportamento fail-soft, default consigliati |
-| [Struttura dei pacchetti](#struttura-dei-pacchetti) | Core vs integrazione ASP.NET Core |
-| [Quick start (ASP.NET Core)](#quick-start-aspnet-core) | Registrazione, middleware e consumo dei metadati |
-| [Configurazione consigliata per produzione](#configurazione-consigliata-per-produzione) | Postura conservativa e note di governance |
-| [API di esempio](#api-di-esempio) | Endpoint per verificare localmente l’estrazione |
-| [Cosa questa libreria non fa](#cosa-questa-libreria-non-fa) | Non-obiettivi espliciti (validazione, enforcement, chiamate API PDND) |
-| [Schema chiavi canoniche](#schema-chiavi-canoniche) | Riferimento completo di tutte le chiavi di metadati estratte |
-| [Riferimenti ufficiali PDND](#riferimenti-ufficiali-pdnd) | Link alla documentazione ufficiale |
-| [Autore e maintainer](#autore-e-maintainer) | Proprietà e manutenzione del progetto |
-| [Contribuire](#contribuire) | Come contribuire al progetto |
+| [Perché questa libreria](#perche-questa-libreria) | Il problema che risolve nei servizi provider reali |
+| [Cos’è la PDND](#cose-la-pdnd) | Cos’è la PDND e perché la richiesta in ingresso trasporta token |
+| [Funzionalità principali](#funzionalita-principali) | Responsabilità, modello dati e confini |
+| [Quali metadati vengono estratti](#quali-metadati-vengono-estratti) | Chiavi canoniche prodotte dall’estrattore (generiche + specifiche PDND) |
+| [Sicurezza e privacy](#sicurezza-e-privacy) | Cosa non viene mai memorizzato, comportamento fail-soft, default consigliati |
+| [Com’è organizzata la libreria](#come-organizzata-la-libreria) | Core vs integrazione ASP.NET Core |
+| [Guida rapida all’uso (ASP.NET Core)](#guida-rapida-uso-aspnet-core) | Registrazione, middleware e consumo dei metadati |
+| [Configurazione consigliata in produzione](#configurazione-consigliata-in-produzione) | Postura conservativa e note di governance |
+| [Esempi di API](#esempi-di-api) | Endpoint per verificare localmente l’estrazione |
+| [Cosa non fa la libreria](#cosa-non-fa-la-libreria) | Non-obiettivi espliciti (validazione, enforcement, chiamate API PDND) |
+| [Elenco delle chiavi estratte](#elenco-delle-chiavi-estratte) | Riferimento completo di tutte le chiavi di metadati estratte |
+| [Documentazione ufficiale PDND](#documentazione-ufficiale-pdnd) | Link alla documentazione ufficiale |
+| [Autore e maintainer](#autore-e-manutenzione) | Proprietà e manutenzione del progetto |
+| [Come contribuire](#come-contribuire) | Come contribuire al progetto |
 | [Licenza](#licenza) | Informazioni sulla licenza |
 | [Contatti](#contatti) | Informazioni di contatto |
 
-## Perché esiste questa libreria
+## Perché questa libreria
 
-Nei servizi provider, l’estrazione dei metadati tende a crescere in modo organico:
-- team diversi parsano header diversi in modo diverso,
-- gli ID di correlazione vengono duplicati o sovrascritti,
-- i token PDND vengono trattati come stringhe raw (con rischio di log accidentali),
-- e la stessa logica viene reimplementata in controller, minimal API o filtri di gateway.
+Nei servizi provider, la gestione dei metadati tende a diventare disomogenea:
+- ogni team interpreta gli header a modo proprio;
+- gli identificativi di correlazione rischiano di essere duplicati o sovrascritti;
+- i token PDND vengono spesso trattati come semplici stringhe (con il rischio di finire accidentalmente nei log);
+- la stessa logica viene ripetuta in controller, minimal API o filtri di gateway.
 
-**Pdnd.Metadata** standardizza questo lavoro:
-- raccoglie i metadati in uno snapshot strutturato (`PdndCallerMetadata`),
-- estrae le informazioni PDND in modalità best-effort e non bloccante,
-- applica “safe defaults” (niente `Authorization` raw, niente blob firmati salvati di default),
-- mantiene separata l’integrazione ASP.NET Core dalla logica core di estrazione.
+**Pdnd.Metadata** risolve questi problemi:
+- raccoglie i metadati in uno snapshot strutturato (`PdndCallerMetadata`);
+- estrae le informazioni PDND in modo best-effort, senza bloccare la richiesta;
+- applica impostazioni sicure di default (mai `Authorization` raw, mai blob firmati salvati di default);
+- separa l’integrazione con ASP.NET Core dalla logica di estrazione vera e propria.
 
-## Panoramica PDND
+## Cos’è la PDND
 
 **PDND** abilita lo scambio sicuro e tracciabile di servizi e dati tra amministrazioni. Nel pattern di interazione più comune, il fruitore chiama l’erogatore inviando un **voucher** (JWT) in:
 
@@ -61,47 +61,47 @@ La libreria cattura anche segnali standard di correlazione e tracing comunemente
 
 Infine, la piattaforma include flussi **DPoP** (proof-of-possession). Riferimento ufficiale: approfondimento su DPoP. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
 
-## Cosa fa Pdnd.Metadata
+## Funzionalità principali
 
-A runtime, la libreria costruisce uno **snapshot di metadati** che rappresenta ciò che è possibile inferire in modo sicuro e utile dalla richiesta in ingresso:
+A runtime, la libreria costruisce uno **snapshot dei metadati** che rappresenta tutto ciò che è possibile inferire in modo sicuro e utile dalla richiesta HTTP in ingresso:
 
-1. **Metadati generici della richiesta**
-   - method/scheme/host/path/query
+1. **Metadati generali della richiesta**
+   - `method`, `scheme`, `host`, `path`, `query`
    - IP e porte remote/local
-   - catena forwarded normalizzata (best-effort)
-   - hint di correlazione e tracing (W3C trace context + request id comuni)
+   - catena `forwarded` normalizzata (best-effort)
+   - indizi di correlazione e tracing (`traceparent` W3C, request id comuni)
    - header selezionati (regole di cattura configurabili)
 
-2. **Estrazione PDND-aware (best-effort)**
-   - voucher: parsing del JOSE header JWT (alg/kid/typ) e payload, estrazione di claim standard e PDND-specific
-   - tracking evidence: parsing di header/payload token ed estrazione di campi selezionati
-   - digest: parsing del valore dell'header `Digest` in una coppia normalizzata (alg, value)
-   - content-digest: parsing dell'header `Content-Digest` (RFC 9530) in una coppia normalizzata (alg, value)
-   - DPoP: parsing di header/payload proof token ed estrazione di campi selezionati (incl. ath, nonce per RFC 9449)
-   - signature: parsing dell'header `Agid-JWT-Signature` per campi di integrità della richiesta
+2. **Estrazione dei metadati PDND (best-effort)**
+   - voucher: parsing del JOSE header JWT (`alg`, `kid`, `typ`) e payload, estrazione di claim standard e PDND-specific
+   - tracking evidence: parsing di header/payload token ed estrazione di metadati selezionati
+   - digest: parsing del valore dell'header `Digest` in una coppia normalizzata (`alg`, `value`)
+   - content-digest: parsing dell'header `Content-Digest` (RFC 9530) in una coppia normalizzata (`alg`, `value`)
+   - DPoP: parsing di header/payload proof token ed estrazione di metadati selezionati (inclusi `ath`, `nonce` per RFC 9449)
+   - signature: parsing dell'header `Agid-JWT-Signature` per metadati di integrità della richiesta
 
 3. **Comportamento fail-soft**
-   - header mancanti ignorati
-   - errori di parsing ignorati
-   - token troppo grandi saltati (guard-rail tramite `MaxTokenLength`)
+   - header mancanti ignorati;
+   - errori di parsing ignorati;
+   - token troppo grandi saltati (guard-rail tramite `MaxTokenLength`).
 
-L’output è pensato per essere stabile e facile da integrare con sistemi di logging, auditing o dashboard di tracing interne, senza esporre segreti.
+L’output è progettato per essere stabile e facile da integrare con sistemi di logging, audit o dashboard di tracing interne, senza esporre segreti.
 
-## Campi estratti
+## Quali metadati vengono estratti
 
-Lo snapshot è un `PdndCallerMetadata` contenente item indicizzati da chiavi canoniche.
+Lo snapshot è un oggetto `PdndCallerMetadata` che contiene tutti i **metadati** estratti dalla richiesta, organizzati tramite **chiavi canoniche**.
 
-### Chiavi generiche
+### Chiavi canoniche generali
 
 - `http.method`, `http.scheme`, `http.host`, `http.path`, `http.query`
 - `net.remote_ip`, `net.remote_port`, `net.local_ip`, `net.local_port`, `net.forwarded_for`
 - `correlation.id`
 - `trace.traceparent`, `trace.tracestate`, `trace.baggage`
-- `http.header.<lowercase-name>` (solo se l’header capture è abilitato e l’header non è negato)
+- `http.header.<nome-minuscolo>` (solo se la cattura header è abilitata e l’header non è negato)
 
-> Nota sugli header forwarded: valori come `Forwarded` / `X-Forwarded-For` sono affidabili solo se impostati da un reverse proxy o API gateway trusted. In reti aperte sono controllabili dall’utente e non vanno considerati segnali di identità autorevoli.
+> **Nota:** valori come `Forwarded` / `X-Forwarded-For` sono affidabili solo se impostati da un reverse proxy o API gateway trusted. In reti aperte sono controllabili dall’utente e non vanno considerati segnali di identità autorevoli.
 
-### Chiavi PDND
+### Chiavi canoniche PDND
 
 #### Voucher (da `Authorization: Bearer ...`)
 - `pdnd.voucher.alg`, `pdnd.voucher.kid`, `pdnd.voucher.typ` (JOSE header)
@@ -120,7 +120,7 @@ Riferimento: utilizzo e semantica voucher. ([developer.pagopa.it](https://develo
 #### Tracking Evidence (da `Agid-JWT-Tracking-Evidence` / `AgID-JWT-TrackingEvidence`)
 - `pdnd.trackingEvidence.alg`, `pdnd.trackingEvidence.kid`, `pdnd.trackingEvidence.typ`
 - `pdnd.trackingEvidence.iss`, `pdnd.trackingEvidence.sub`, `pdnd.trackingEvidence.jti` (se presenti)
-- `pdnd.trackingEvidence.aud` (se presente; puo essere separato da virgole)
+- `pdnd.trackingEvidence.aud` (se presente; può essere separato da virgole)
 - `pdnd.trackingEvidence.iat`, `pdnd.trackingEvidence.nbf`, `pdnd.trackingEvidence.exp` (se presenti)
 
 **Nota di compatibilità:** nella documentazione PDND il nome dell’header appare in due varianti (`Agid-JWT-Tracking-Evidence` e `AgID-JWT-TrackingEvidence`). L’estrattore supporta entrambe per interoperabilità.
@@ -136,8 +136,8 @@ Riferimento: note digest nelle FAQ voucher. ([developer.pagopa.it](https://devel
 #### DPoP (da `DPoP`)
 - `pdnd.dpop.alg`, `pdnd.dpop.kid`, `pdnd.dpop.typ`
 - `pdnd.dpop.htm`, `pdnd.dpop.htu`, `pdnd.dpop.jti`, `pdnd.dpop.iat`, `pdnd.dpop.exp` (se presenti)
-- `pdnd.dpop.ath` (hash access token, RFC 9449 u00a74.2)
-- `pdnd.dpop.nonce` (nonce fornito dal server, RFC 9449 u00a74.3)
+- `pdnd.dpop.ath` (hash access token, RFC 9449 §4.2)
+- `pdnd.dpop.nonce` (nonce fornito dal server, RFC 9449 §4.3)
 
 Riferimento: approfondimento DPoP. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop))
 
@@ -150,13 +150,13 @@ RFC 9530 sostituisce l'header legacy `Digest` con `Content-Digest` usando il for
 #### Agid-JWT-Signature (da `Agid-JWT-Signature`)
 - `pdnd.signature.alg`, `pdnd.signature.kid`, `pdnd.signature.typ` (JOSE header)
 - `pdnd.signature.iss`, `pdnd.signature.sub`, `pdnd.signature.jti` (se presenti)
-- `pdnd.signature.aud` (se presente; puo essere separato da virgole)
+- `pdnd.signature.aud` (se presente; può essere separato da virgole)
 - `pdnd.signature.iat`, `pdnd.signature.exp` (se presenti)
 - `pdnd.signature.signed_headers` (digest degli header firmati per integrita)
 
 Usato nel pattern PDND INTEGRITY_REST_01 per la firma delle richieste.
 
-## Modello di sicurezza
+## Sicurezza e privacy
 
 ### Cosa non viene mai memorizzato (raw)
 Di default, la libreria non memorizza mai:
@@ -167,21 +167,23 @@ Questo previene la persistenza o il logging accidentale di segreti.
 
 ### Blob firmati (raw)
 Di default, la libreria **non** memorizza valori raw per:
-- header Tracking Evidence
-- header DPoP
-- header Agid-JWT-Signature
+- header Tracking Evidence;
+- header DPoP;
+- header Agid-JWT-Signature.
 
 Invece, effettua parsing best-effort e memorizza campi selezionati sotto chiavi canoniche `pdnd.*`. Questo rende l’output ispezionabile riducendo il rischio di leakage.
 
 ### Comportamento fail-soft
-- Qualunque errore di parsing viene ignorato; la request prosegue.
+- Qualunque errore di parsing viene ignorato; la richiesta prosegue.
 - Token più lunghi di `MaxTokenLength` vengono saltati.
 - Header PDND mancanti non producono errori.
 
 ### Nota operativa
 La cattura degli header può comunque raccogliere dati sensibili se il tuo servizio (o i gateway) iniettano header applicativi contenenti informazioni personali. In produzione è raccomandata una allow-list stretta (vedi sotto).
 
-## Struttura dei pacchetti
+## Com’è organizzata la libreria
+
+Entrambi i pacchetti supportano **`net8.0`** (LTS) e **`net10.0`**, garantendo compatibilità con le versioni .NET più diffuse negli ambienti di produzione della PA.
 
 - `Pdnd.Metadata`  
   Astrazioni core e pipeline di estrazione, incluse utility di parsing PDND.
@@ -189,7 +191,7 @@ La cattura degli header può comunque raccogliere dati sensibili se il tuo servi
 - `Pdnd.Metadata.AspNetCore`  
   Integrazione ASP.NET Core: middleware, accessor e tipi di binding per minimal API.
 
-## Quick start (ASP.NET Core)
+## Guida rapida all’uso (ASP.NET Core)
 
 ### 1) Registra i servizi (production-first)
 
@@ -311,7 +313,7 @@ app.MapGet("/minimal/pdnd", (PdndCallerMetadataParameter pdnd) =>
 });
 ```
 
-## Configurazione consigliata per produzione
+## Configurazione consigliata in produzione
 
 Per i servizi in produzione, in genere è meglio decidere esplicitamente *quali header catturare* invece di collezionare tutto e filtrare dopo.
 
@@ -324,7 +326,7 @@ Approccio conservativo:
 
 La libreria applica già la regola più importante di default: `Authorization` raw non viene mai memorizzato.
 
-## API di esempio
+## Esempi di API
 
 Il progetto di esempio serve per validare rapidamente l’integrazione, senza loggare token raw.
 
@@ -347,7 +349,7 @@ curl \
   http://localhost:5041/minimal/pdnd
 ```
 
-## Cosa questa libreria non fa
+## Cosa non fa la libreria
 
 Questa è intenzionalmente una extraction layer, non una enforcement/security layer.
 
@@ -358,19 +360,19 @@ Questa è intenzionalmente una extraction layer, non una enforcement/security la
 
 Se ti serve validazione/enforcement, posizionala nel tuo layer auth (gateway/middleware di servizio) e usa Pdnd.Metadata solo come snapshot “audit-friendly” per osservabilità/diagnostica.
 
-## Schema chiavi canoniche
+## Elenco delle chiavi estratte
 
 Per un riferimento completo e strutturato di tutte le 55+ chiavi canoniche di metadati estratte dalla libreria, consulta il documento **[PDND Metadata Schema](./src/PDND_METADATA_SCHEMA.md)**.
 
 Lo schema copre:
-- Tutti i pattern di interoperabilita PDND (ID_AUTH, INTEGRITY, AUDIT)
+- Tutti i pattern di interoperabilità PDND (ID_AUTH, INTEGRITY, AUDIT)
 - Mapping campi JWT/JWS per ogni tipo di token
 - Riferimento opzioni di configurazione
 - Considerazioni di sicurezza
 
-Questo schema e pensato come **riferimento di community** per standardizzare l'estrazione dei metadati PDND nelle implementazioni .NET.
+Questo schema è pensato come **riferimento di community** per standardizzare l'estrazione dei metadati PDND nelle implementazioni .NET.
 
-## Riferimenti ufficiali PDND
+## Documentazione ufficiale PDND
 
 - PDND Interoperabilità – Hub guide ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides))
 - Voucher (utilizzo) ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher))
@@ -386,7 +388,7 @@ Questo schema e pensato come **riferimento di community** per standardizzare l'e
 | **Francesco Del Re** |
 | Autore e maintainer |
 
-## Contribuire
+## Come contribuire
 Grazie per aver considerato di contribuire al codice sorgente!
 Se vuoi contribuire, fai un fork, applica le modifiche, esegui commit e apri una pull request così che i maintainer possano revisionare e fare merge nel branch principale.
 
