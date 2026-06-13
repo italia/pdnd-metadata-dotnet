@@ -46,9 +46,12 @@ public sealed class PdndCallerMetadata
     /// Adds a metadata item to the snapshot.
     /// </summary>
     /// <param name="item">The metadata item to add.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="item"/> is <c>null</c>.</exception>
     public void Add(PdndMetadataItem item)
     {
-        if (string.IsNullOrWhiteSpace(item.Key))
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (string.IsNullOrWhiteSpace(item.Key) || string.IsNullOrWhiteSpace(item.Value))
             return;
 
         lock (_lock)

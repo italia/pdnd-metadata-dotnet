@@ -1,5 +1,6 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
+using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Pdnd.Metadata.RequestContext;
@@ -46,10 +47,37 @@ public static class HttpContextPdndRequestContextMapper
 
         var tls = httpContext.Features.Get<ITlsConnectionFeature>();
         if (tls?.ClientCertificate is not null)
+        {
             security["mtls.client_certificate_present"] = "true";
+
+            // Best-effort: expose only the certificate thumbprint (no PII like subject/issuer DN).
+            try
+            {
+                var thumbprint = tls.ClientCertificate.Thumbprint;
+                if (!string.IsNullOrWhiteSpace(thumbprint))
+                    security["mtls.client_certificate_thumbprint"] = thumbprint;
+            }
+            catch
+            {
+                // Fail-soft: never break the request due to certificate metadata extraction.
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(req.Protocol))
             security["http.protocol"] = req.Protocol;
+
+        // Best-effort: capture TLS handshake details when the hosting environment exposes them.
+        var tlsHandshake = httpContext.Features.Get<ITlsHandshakeFeature>();
+        if (tlsHandshake is not null)
+        {
+            // System.Security.Authentication.SslProtocols values (e.g., "Tls12", "Tls13").
+            var protocol = tlsHandshake.Protocol.ToString();
+            if (!string.IsNullOrWhiteSpace(protocol) &&
+                !protocol.Equals("None", StringComparison.OrdinalIgnoreCase))
+            {
+                security["tls.protocol"] = protocol;
+            }
+        }
 
         return new PdndRequestContext
         {

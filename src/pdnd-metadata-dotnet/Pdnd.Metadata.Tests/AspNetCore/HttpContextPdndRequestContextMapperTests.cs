@@ -1,7 +1,11 @@
 // (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using System.Net;
+using System.Security.Authentication;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using FluentAssertions;
+using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Pdnd.Metadata.AspNetCore.Mapping;
@@ -107,5 +111,112 @@ public class HttpContextPdndRequestContextMapperTests
         var ctx = HttpContextPdndRequestContextMapper.Map(httpContext);
 
         ctx.Claims.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Map_ShouldExposeMtlsClientCertificateThumbprint_WhenClientCertificatePresent()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Method = "GET";
+
+        using var cert = CreateSelfSignedCertificate();
+        httpContext.Features.Set<ITlsConnectionFeature>(new TestTlsConnectionFeature(cert));
+
+        var ctx = HttpContextPdndRequestContextMapper.Map(httpContext);
+
+        ctx.SecurityHints.Should().ContainKey("mtls.client_certificate_present")
+            .WhoseValue.Should().Be("true");
+        ctx.SecurityHints.Should().ContainKey("mtls.client_certificate_thumbprint")
+            .WhoseValue.Should().Be(cert.Thumbprint);
+    }
+
+    [Fact]
+    public void Map_ShouldNotExposeMtlsHints_WhenNoClientCertificate()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Method = "GET";
+        httpContext.Features.Set<ITlsConnectionFeature>(new TestTlsConnectionFeature(clientCertificate: null));
+
+        var ctx = HttpContextPdndRequestContextMapper.Map(httpContext);
+
+        ctx.SecurityHints.Should().NotContainKey("mtls.client_certificate_present");
+        ctx.SecurityHints.Should().NotContainKey("mtls.client_certificate_thumbprint");
+    }
+
+    [Fact]
+    public void Map_ShouldExposeTlsProtocol_WhenHandshakeFeatureAvailable()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Method = "GET";
+        httpContext.Features.Set<ITlsHandshakeFeature>(new TestTlsHandshakeFeature(SslProtocols.Tls12));
+
+        var ctx = HttpContextPdndRequestContextMapper.Map(httpContext);
+
+        ctx.SecurityHints.Should().ContainKey("tls.protocol")
+            .WhoseValue.Should().Be(SslProtocols.Tls12.ToString());
+    }
+
+    [Fact]
+    public void Map_ShouldNotExposeTlsProtocol_WhenHandshakeReportsNone()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Method = "GET";
+        httpContext.Features.Set<ITlsHandshakeFeature>(new TestTlsHandshakeFeature(SslProtocols.None));
+
+        var ctx = HttpContextPdndRequestContextMapper.Map(httpContext);
+
+        ctx.SecurityHints.Should().NotContainKey("tls.protocol");
+    }
+
+    private static X509Certificate2 CreateSelfSignedCertificate()
+    {
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest(
+            "CN=pdnd-metadata-tests",
+            rsa,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+
+        var notBefore = DateTimeOffset.UtcNow.AddMinutes(-5);
+        var notAfter = DateTimeOffset.UtcNow.AddHours(1);
+
+        return request.CreateSelfSigned(notBefore, notAfter);
+    }
+
+    private sealed class TestTlsConnectionFeature : ITlsConnectionFeature
+    {
+        public TestTlsConnectionFeature(X509Certificate2? clientCertificate)
+        {
+            ClientCertificate = clientCertificate;
+        }
+
+        public X509Certificate2? ClientCertificate { get; set; }
+
+        public Task<X509Certificate2?> GetClientCertificateAsync(CancellationToken cancellationToken)
+            => Task.FromResult(ClientCertificate);
+    }
+
+    private sealed class TestTlsHandshakeFeature : ITlsHandshakeFeature
+    {
+        public TestTlsHandshakeFeature(SslProtocols protocol)
+        {
+            Protocol = protocol;
+        }
+
+        public SslProtocols Protocol { get; }
+
+#pragma warning disable SYSLIB0058 // Obsolete TLS handshake properties are still required by the interface contract.
+        public CipherAlgorithmType CipherAlgorithm => CipherAlgorithmType.None;
+
+        public int CipherStrength => 0;
+
+        public HashAlgorithmType HashAlgorithm => HashAlgorithmType.None;
+
+        public int HashStrength => 0;
+
+        public ExchangeAlgorithmType KeyExchangeAlgorithm => ExchangeAlgorithmType.None;
+
+        public int KeyExchangeStrength => 0;
+#pragma warning restore SYSLIB0058
     }
 }

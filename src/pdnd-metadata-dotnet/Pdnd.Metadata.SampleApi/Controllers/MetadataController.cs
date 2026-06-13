@@ -45,7 +45,7 @@ public sealed class MetadataController : ControllerBase
         {
             createdAtUtc = md.CreatedAtUtc,
             correlationId = md.GetFirstValue(PdndMetadataKeys.CorrelationId),
-            // requestId = md.GetFirstValue("request.id"), // enable if you added the RequestId key
+            requestId = md.GetFirstValue(PdndMetadataKeys.RequestId),
             traceparent = md.GetFirstValue(PdndMetadataKeys.TraceParent),
             remoteIp = md.GetFirstValue(PdndMetadataKeys.NetRemoteIp),
             forwardedFor = md.GetFirstValue(PdndMetadataKeys.NetForwardedFor),

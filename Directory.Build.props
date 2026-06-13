@@ -7,9 +7,9 @@
     <Copyright>Copyright (c) 2026 Francesco Del Re</Copyright>
 
     <!-- Repository -->
-    <RepositoryUrl>https://github.com/engineering87/pdnd-metadata-dotnet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/italia/pdnd-metadata-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/engineering87/pdnd-metadata-dotnet</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/italia/pdnd-metadata-dotnet</PackageProjectUrl>
 
     <!-- License -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

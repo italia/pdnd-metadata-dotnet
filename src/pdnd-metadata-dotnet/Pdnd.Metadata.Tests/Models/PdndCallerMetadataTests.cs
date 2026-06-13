@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using FluentAssertions;
 using Pdnd.Metadata.Models;
@@ -57,6 +57,29 @@ public class PdndCallerMetadataTests
 
         md.Add("", "v", PdndMetadataSource.Header);
         md.Add("k", "", PdndMetadataSource.Header);
+
+        md.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Add_ShouldThrow_WhenItemIsNull()
+    {
+        var md = new PdndCallerMetadata();
+
+        var act = () => md.Add((PdndMetadataItem)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("item");
+    }
+
+    [Fact]
+    public void Add_ShouldIgnoreItem_WhenItemHasEmptyKeyOrValue()
+    {
+        var md = new PdndCallerMetadata();
+
+        md.Add(new PdndMetadataItem("", "v", PdndMetadataSource.Header));
+        md.Add(new PdndMetadataItem("k", "", PdndMetadataSource.Header));
+        md.Add(new PdndMetadataItem("   ", "v", PdndMetadataSource.Header));
 
         md.Items.Should().BeEmpty();
     }
