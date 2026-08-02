@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using FluentAssertions;
 using Pdnd.Metadata.Extraction.Jwt;
@@ -46,6 +46,32 @@ public class JwtDecoderTests
 
         JwtDecoder.TryDecode(token, out var parts).Should().BeTrue();
         parts!.SignatureBase64Url.Should().Be("sigPart");
+    }
+
+    [Fact]
+    public void TryDecode_ShouldDecodeHeaderAndUseEmptyPayload_WhenTokenIsJweWithFiveSegments()
+    {
+        var header = Base64UrlTestHelper.EncodeUtf8("{\"alg\":\"dir\",\"kid\":\"k1\",\"typ\":\"JWT\"}");
+
+        // JWE compact: protected-header.encrypted-key.iv.ciphertext.tag
+        // For alg=dir encrypted-key can be empty.
+        var token = $"{header}..iv.ciphertext.tag";
+
+        JwtDecoder.TryDecode(token, out var parts).Should().BeTrue();
+        parts!.HeaderJson.Should().Contain("\"alg\":\"dir\"");
+        parts.PayloadJson.Should().Be("{}");
+        parts.SignatureBase64Url.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryDecode_ShouldReturnFalse_WhenTokenIsJweAndRequiredSegmentsAreMissing()
+    {
+        var header = Base64UrlTestHelper.EncodeUtf8("{\"alg\":\"dir\"}");
+
+        // Missing ciphertext segment.
+        var token = $"{header}..iv..tag";
+
+        JwtDecoder.TryDecode(token, out _).Should().BeFalse();
     }
 
     [Theory]

@@ -80,8 +80,18 @@ public static class DigestParser
             if (string.IsNullOrWhiteSpace(alg) || alg.Contains(' ') || string.IsNullOrWhiteSpace(val))
                 continue;
 
+            // RFC 9530 Structured Fields may include parameters after the digest value:
+            // e.g. sha-256=:base64=:;keyid="k1"
+            var semicolonIndex = val.IndexOf(';');
+            if (semicolonIndex >= 0)
+                val = val.Substring(0, semicolonIndex).Trim();
+
             // RFC 9530 byte sequence: ":base64value:"
             if (val.Length >= 2 && val[0] == ':' && val[val.Length - 1] == ':')
+                val = val.Substring(1, val.Length - 2);
+
+            // Legacy fallback compatibility: quoted value
+            if (val.Length >= 2 && val[0] == '"' && val[val.Length - 1] == '"')
                 val = val.Substring(1, val.Length - 2);
 
             if (string.IsNullOrWhiteSpace(val))

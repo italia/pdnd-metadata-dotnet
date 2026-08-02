@@ -30,15 +30,27 @@ public static class JwtDecoder
         var segments = token.Split('.');
 
         // JWS has 3 segments, JWE has 5 segments
-        // We require at least 2 segments (header + payload)
+        // We require at least 2 segments.
         if (segments.Length < 2 || segments.Length > 5)
             return false;
 
-        // Validate segments are not empty
-        if (string.IsNullOrEmpty(segments[0]) || string.IsNullOrEmpty(segments[1]))
+        if (!TryBase64UrlDecodeToUtf8(segments[0], out var headerJson))
             return false;
 
-        if (!TryBase64UrlDecodeToUtf8(segments[0], out var headerJson))
+        // JWE compact serialization (5 segments): payload is encrypted and not JSON-decodable.
+        // For best-effort extraction we keep header metadata and expose an empty JSON payload.
+        if (segments.Length == 5)
+        {
+            // Segment 1 (encrypted key) can be empty for some algorithms (e.g., "dir").
+            if (string.IsNullOrEmpty(segments[2]) || string.IsNullOrEmpty(segments[3]) || string.IsNullOrEmpty(segments[4]))
+                return false;
+
+            parts = new JwtParts(headerJson, "{}", null);
+            return true;
+        }
+
+        // JWS / JWT-like: require second segment to decode as UTF-8 JSON payload.
+        if (string.IsNullOrEmpty(segments[1]))
             return false;
 
         if (!TryBase64UrlDecodeToUtf8(segments[1], out var payloadJson))

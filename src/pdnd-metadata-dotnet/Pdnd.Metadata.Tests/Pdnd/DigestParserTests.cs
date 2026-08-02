@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using FluentAssertions;
 using Pdnd.Metadata.Extraction.Pdnd;
@@ -55,6 +55,22 @@ public class DigestParserTests
     public void TryParseContentDigestHeader_ShouldPickFirstValidPair_FromMultiple()
     {
         DigestParser.TryParseContentDigestHeader("sha-256=:abc=:, sha-512=:def=:", out var alg, out var val).Should().BeTrue();
+        alg.Should().Be("sha-256");
+        val.Should().Be("abc=");
+    }
+
+    [Fact]
+    public void TryParseContentDigestHeader_ShouldParseValue_WhenStructuredFieldHasParameters()
+    {
+        DigestParser.TryParseContentDigestHeader("sha-256=:abc123=:\t;keyid=\"k1\"", out var alg, out var val).Should().BeTrue();
+        alg.Should().Be("sha-256");
+        val.Should().Be("abc123=");
+    }
+
+    [Fact]
+    public void TryParseContentDigestHeader_ShouldParseFirstValue_WhenMultipleEntriesContainParameters()
+    {
+        DigestParser.TryParseContentDigestHeader("sha-256=:abc=:;p=1, sha-512=:def=:", out var alg, out var val).Should().BeTrue();
         alg.Should().Be("sha-256");
         val.Should().Be("abc=");
     }
