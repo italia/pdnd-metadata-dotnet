@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <PackageId>Pdnd.Metadata</PackageId>
     <Title>Pdnd.Metadata</Title>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Description>Lightweight .NET library for extracting and normalizing PDND (Piattaforma Digitale Nazionale Dati) request metadata — voucher JWT, tracking evidence, DPoP, digest, and Agid-JWT-Signature — in a transport-agnostic, fail-soft manner.</Description>
     <PackageTags>pdnd;interoperabilita;modi;agid;jwt;metadata;voucher;tracking-evidence;dpop;digest;italia;pa</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

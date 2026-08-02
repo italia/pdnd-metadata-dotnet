@@ -6,13 +6,14 @@ namespace Pdnd.Metadata.Extraction.Jwt;
 
 /// <summary>
 /// Provides best-effort decoding for JWT/JWS tokens without validation.
-/// Supports JWS (3 segments) and provides limited support for JWE (5 segments) by extracting header only.
+/// Supports JWS (3 segments) and limited JWE compact support (5 segments):
+/// for JWE, only the protected header is decoded and payload is normalized to an empty JSON object.
 /// </summary>
 public static class JwtDecoder
 {
     /// <summary>
-    /// Tries to decode a token in the form "header.payload[.signature]" where header and payload are Base64Url JSON.
-    /// For JWE tokens (5 segments), only the header is reliably decoded; payload may be encrypted.
+    /// Tries to decode a compact token in the form "header.payload[.signature]" (JWS/JWT-like).
+    /// For JWE tokens (5 segments), decodes only the protected header and returns an empty JSON payload ("{}").
     /// </summary>
     /// <param name="token">The token string.</param>
     /// <param name="parts">Decoded token parts if successful.</param>

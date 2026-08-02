@@ -76,7 +76,7 @@ At runtime, the library builds a **metadata snapshot** representing all the info
    - voucher: parse the JWT JOSE header (`alg`, `kid`, `typ`) and payload, extract standard and PDND-specific claims
    - tracking evidence: parse the token header/payload and extract selected metadata
    - digest: parse the `Digest` header value into a normalized (`alg`, `value`) pair
-   - content-digest: parse the `Content-Digest` header (RFC 9530) into a normalized (`alg`, `value`) pair
+   - content-digest: parse the `Content-Digest` header (RFC 9530) into a normalized (`alg`, `value`) pair, with best-effort support for structured field parameters
    - DPoP: parse the proof token header/payload and extract selected metadata (including `ath`, `nonce` per RFC 9449)
    - signature: parse the `Agid-JWT-Signature` header for request integrity metadata
 
@@ -117,6 +117,8 @@ The snapshot is a `PdndCallerMetadata` object containing all **metadata** extrac
 
 Reference: voucher usage and semantics. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher))
 
+Implementation note: if a voucher is provided as JWE compact serialization (5 segments), the library extracts only the protected JOSE header in best-effort mode; encrypted payload is not decrypted or validated.
+
 #### Tracking Evidence (from `Agid-JWT-Tracking-Evidence` / `AgID-JWT-TrackingEvidence`)
 - `pdnd.trackingEvidence.alg`, `pdnd.trackingEvidence.kid`, `pdnd.trackingEvidence.typ`
 - `pdnd.trackingEvidence.iss`, `pdnd.trackingEvidence.sub`, `pdnd.trackingEvidence.jti` (when present)
@@ -146,6 +148,8 @@ Reference: DPoP deep dive. ([developer.pagopa.it](https://developer.pagopa.it/pd
 - `pdnd.content_digest.value`
 
 RFC 9530 replaces the legacy `Digest` header with `Content-Digest` using structured field dictionary format (`alg=:base64value:`). The library supports both.
+
+The parser also handles structured field parameter variants (e.g., `sha-256=:...:;keyid="k1"`) in best-effort mode.
 
 #### Agid-JWT-Signature (from `Agid-JWT-Signature`)
 - `pdnd.signature.alg`, `pdnd.signature.kid`, `pdnd.signature.typ` (JOSE header)

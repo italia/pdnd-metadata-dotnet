@@ -76,6 +76,14 @@ public class DigestParserTests
     }
 
     [Fact]
+    public void TryParseContentDigestHeader_ShouldSkipInvalidEntry_AndParseNextValidWithParameters()
+    {
+        DigestParser.TryParseContentDigestHeader("sha-256=;p=1, sha-512=:def=:\t;keyid=\"k2\"", out var alg, out var val).Should().BeTrue();
+        alg.Should().Be("sha-512");
+        val.Should().Be("def=");
+    }
+
+    [Fact]
     public void TryParseContentDigestHeader_ShouldFallbackToLegacyFormat()
     {
         DigestParser.TryParseContentDigestHeader("SHA-256=abc", out var alg, out var val).Should().BeTrue();

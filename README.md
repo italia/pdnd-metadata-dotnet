@@ -76,7 +76,7 @@ A runtime, la libreria costruisce uno **snapshot dei metadati** che rappresenta 
    - voucher: parsing del JOSE header JWT (`alg`, `kid`, `typ`) e payload, estrazione di claim standard e PDND-specific
    - tracking evidence: parsing di header/payload token ed estrazione di metadati selezionati
    - digest: parsing del valore dell'header `Digest` in una coppia normalizzata (`alg`, `value`)
-   - content-digest: parsing dell'header `Content-Digest` (RFC 9530) in una coppia normalizzata (`alg`, `value`)
+   - content-digest: parsing dell'header `Content-Digest` (RFC 9530) in una coppia normalizzata (`alg`, `value`), con supporto best-effort ai parametri structured fields
    - DPoP: parsing di header/payload proof token ed estrazione di metadati selezionati (inclusi `ath`, `nonce` per RFC 9449)
    - signature: parsing dell'header `Agid-JWT-Signature` per metadati di integrità della richiesta
 
@@ -117,6 +117,8 @@ Lo snapshot è un oggetto `PdndCallerMetadata` che contiene tutti i **metadati**
 
 Riferimento: utilizzo e semantica voucher. ([developer.pagopa.it](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher))
 
+Nota implementativa: se il voucher è in formato JWE (compact, 5 segmenti), la libreria estrae in modo best-effort solo il protected header JOSE; il payload cifrato non viene decifrato né validato.
+
 #### Tracking Evidence (da `Agid-JWT-Tracking-Evidence` / `AgID-JWT-TrackingEvidence`)
 - `pdnd.trackingEvidence.alg`, `pdnd.trackingEvidence.kid`, `pdnd.trackingEvidence.typ`
 - `pdnd.trackingEvidence.iss`, `pdnd.trackingEvidence.sub`, `pdnd.trackingEvidence.jti` (se presenti)
@@ -146,6 +148,8 @@ Riferimento: approfondimento DPoP. ([developer.pagopa.it](https://developer.pago
 - `pdnd.content_digest.value`
 
 RFC 9530 sostituisce l'header legacy `Digest` con `Content-Digest` usando il formato structured field dictionary (`alg=:base64value:`). La libreria supporta entrambi.
+
+Il parser gestisce anche varianti con parametri structured fields (es. `sha-256=:...:;keyid="k1"`) in modalità best-effort.
 
 #### Agid-JWT-Signature (da `Agid-JWT-Signature`)
 - `pdnd.signature.alg`, `pdnd.signature.kid`, `pdnd.signature.typ` (JOSE header)

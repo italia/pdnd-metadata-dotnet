@@ -74,6 +74,15 @@ public class JwtDecoderTests
         JwtDecoder.TryDecode(token, out _).Should().BeFalse();
     }
 
+    [Fact]
+    public void TryDecode_ShouldReturnFalse_WhenTokenIsJweAndHeaderIsNotBase64UrlJson()
+    {
+        // Invalid protected header segment.
+        var token = "@@invalid@@..iv.ciphertext.tag";
+
+        JwtDecoder.TryDecode(token, out _).Should().BeFalse();
+    }
+
     [Theory]
     [InlineData("..")]
     [InlineData(".abc.")]

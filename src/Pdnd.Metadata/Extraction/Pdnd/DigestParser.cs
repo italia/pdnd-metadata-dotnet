@@ -51,7 +51,8 @@ public static class DigestParser
 
     /// <summary>
     /// Tries to parse a Content-Digest header value in RFC 9530 dictionary format
-    /// (e.g., "sha-256=:base64value:"). Falls back to legacy Digest format if needed.
+    /// (e.g., "sha-256=:base64value:" or with parameters like ";keyid=\"k1\"").
+    /// Falls back to legacy Digest format if needed.
     /// This is best-effort and does not validate the content.
     /// </summary>
     /// <param name="contentDigestHeader">Content-Digest header raw value.</param>
