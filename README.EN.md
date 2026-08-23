@@ -233,10 +233,17 @@ that the corpus does not cover, open one with the values replaced by synthetic e
 documenting a case this implementation handles badly are especially welcome, and are merged as
 failing tests before the fix.
 
-## License and contact
+## Author and maintainer
 
-Distributed under the MIT license. See [LICENSE](LICENSE).
+| [![Francesco Del Re](https://github.com/engineering87.png?size=100)](https://github.com/engineering87) |
+| ------------------------------------------------------------------------------------------------------ |
+| **Francesco Del Re** |
+| Author & Maintainer |
 
-Author and maintainer: [Francesco Del Re](https://github.com/engineering87), francesco.delre[at]protonmail.com.
+For any information: francesco.delre[at]protonmail.com.
 
 Report vulnerabilities through the [security policy](SECURITY.md) rather than public issues.
+
+## License
+
+Distributed under the MIT license. See [LICENSE](LICENSE).

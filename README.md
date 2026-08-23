@@ -239,11 +239,18 @@ un'integrazione reale che il corpus non copre, aprine uno con i valori sostituit
 sintetici. I vettori che documentano un caso gestito male da questa implementazione sono
 particolarmente benvenuti, e vengono accettati come test che falliscono prima della correzione.
 
-## Licenza e contatti
+## Autore e maintainer
 
-Distribuito con licenza MIT. Vedi [LICENSE](LICENSE).
+| [![Francesco Del Re](https://github.com/engineering87.png?size=100)](https://github.com/engineering87) |
+| ------------------------------------------------------------------------------------------------------ |
+| **Francesco Del Re** |
+| Autore e maintainer |
 
-Autore e maintainer: [Francesco Del Re](https://github.com/engineering87), francesco.delre[at]protonmail.com.
+Per qualsiasi informazione: francesco.delre[at]protonmail.com.
 
 Le vulnerabilità vanno segnalate secondo la [security policy](SECURITY.md), non tramite issue
 pubbliche.
+
+## Licenza
+
+Distribuito con licenza MIT. Vedi [LICENSE](LICENSE).

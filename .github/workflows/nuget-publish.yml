@@ -54,7 +54,7 @@ jobs:
         run: dotnet build Pdnd.Metadata.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test Pdnd.Metadata.slnx --configuration Release --no-build --verbosity normal
+        run: dotnet test Pdnd.Metadata.slnx --configuration Release --no-build
 
       - name: Pack
         run: |

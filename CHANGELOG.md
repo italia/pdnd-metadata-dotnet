@@ -78,6 +78,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Infrastructure
 
+- The test project runs on Microsoft.Testing.Platform. The .NET 10 SDK no longer executes MTP
+  test projects through the VSTest target, which broke `dotnet test` outright. The runner is
+  now selected in `global.json`, the test project opts in explicitly, and the VSTest-only
+  packages and command-line options are removed. Coverage collection is dropped for the moment:
+  `--collect` has no equivalent under MTP, where each collector contributes its own option.
 - `TreatWarningsAsErrors` is enabled for every project in the repository. This is what surfaces
   uses of deprecated members, unhandled nullability, and unused results at build time rather than
   in review. It applies to this repository only and does not affect consumers.

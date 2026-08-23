@@ -49,19 +49,11 @@ jobs:
       - name: Build
         run: dotnet build Pdnd.Metadata.slnx --configuration Release --no-restore
 
+      # The runner is selected in global.json. --collect and --results-directory are VSTest
+      # options and have no equivalent here: under Microsoft.Testing.Platform each data
+      # collector contributes its own option, so coverage needs a dedicated extension package.
       - name: Test
-        run: >
-          dotnet test Pdnd.Metadata.slnx --configuration Release --no-build
-          --verbosity normal
-          --collect:"XPlat Code Coverage"
-          --results-directory ./coverage
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage
-          path: ./coverage
+        run: dotnet test Pdnd.Metadata.slnx --configuration Release --no-build
 
   validate-spec:
     runs-on: ubuntu-latest
