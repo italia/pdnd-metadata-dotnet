@@ -9,6 +9,7 @@
     <PackageTags>pdnd;interoperabilita;modi;agid;aspnetcore;middleware;metadata;voucher;tracking-evidence;dpop;italia;pa</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Title>Pdnd.Metadata.AspNetCore</Title>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
