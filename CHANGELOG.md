@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0]
 
+Released from 1.0.0. A 1.0.1 was prepared but never published to NuGet, so its changes are
+listed here rather than under a version nobody can install.
+
 ### Breaking
 
 - `PdndMetadataOptions.CaptureAllHeaders` now defaults to `false`. Header capture is opt-in.
@@ -24,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reader, so the key was silently absent on every conformant request. Array-of-objects,
   array-of-names, and comma-separated string encodings are now all accepted, and each signed
   header value is additionally exposed under `pdnd.signature.signed_header.<name>`.
+- Best-effort JWE handling in `JwtDecoder`: five-segment compact tokens now decode their
+  protected header and normalize the payload to an empty object rather than breaking extraction.
+- `Content-Digest` parsing accepts RFC 9530 structured field parameters such as `;keyid="..."`
+  while preserving compatibility with the legacy form.
 - `JwtDecoder` accepted four-segment tokens, which are neither JWS nor JWE.
 - `JwtDecoder` accepted standard-Base64 characters where Base64Url is required, because
   `Convert.FromBase64String` tolerates them after the character translation.
@@ -108,16 +115,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version and SourceLink are declared once, in `Directory.Build.props`.
 - `publiccode.yml` no longer attributes the project to a government organisation, and its
   declared version is kept in step with the packages.
-
-## [1.0.1]
-
-### Fixed
-- Improved best-effort JWE handling in `JwtDecoder` (5-segment compact tokens): decode protected header and normalize payload to `{}` without breaking extraction flow.
-- Improved `Content-Digest` parsing (RFC 9530) to support structured field parameters (e.g. `;keyid="..."`) while preserving legacy compatibility.
-
-### Tests
-- Added JWE edge-case tests in `JwtDecoderTests`.
-- Added `Content-Digest` parameter/skip-invalid-entry tests in `DigestParserTests`.
 
 ## [1.0.0]
 

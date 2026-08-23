@@ -9,7 +9,7 @@ landingURL: "https://github.com/italia/pdnd-metadata-dotnet"
 softwareVersion: "2.0.0"
 releaseDate: "2026-08-23"
 softwareType: "library"
-developmentStatus: "beta"
+developmentStatus: "stable"
 platforms:
   - windows
   - linux
