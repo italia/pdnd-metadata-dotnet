@@ -47,7 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PdndMetadataOptions.PathExclusions` skips extraction entirely for matching path prefixes,
   so health probes and metrics scrapes no longer pay the cost.
 - Conformance vector corpus under `spec/vectors/`, executed by the test suite and validated
-  structurally in CI. 22 vectors across 6 groups, including adversarial inputs.
+  structurally in CI. 30 vectors across 6 groups, including adversarial inputs.
+- Second reference implementation in Python under `spec/reference/python/`, written from the
+  specification rather than ported from the C#, and gated in CI. It is not published and has no
+  users: it exists to prove the specification is complete enough for an independent
+  implementation. It found a genuine gap on its first run, recorded in `spec/CHANGELOG.md`.
+- Specification changelog under `spec/CHANGELOG.md`, versioned independently of the packages.
+- Four documentation diagrams under `assets/diagrams/`, each with a light and a dark variant:
+  architectural placement, the extraction pipeline, the canonical key namespace, and the
+  conformance model. All are produced by a single generator so that grid, palette, and
+  typography cannot drift between figures, and CI fails if the committed output no longer
+  matches it.
 - Project logo under `assets/`, with light and dark variants.
 
 ### Changed

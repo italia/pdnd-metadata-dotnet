@@ -66,5 +66,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Validate conformance vectors against the schema
+      - name: Validate the corpus structure
         run: python3 spec/vectors/validate.py
+
+      # The second implementation is the only mechanism that keeps the specification honest,
+      # so it is gated in CI rather than run by hand.
+      - name: Run the corpus against the Python reference implementation
+        working-directory: spec/reference/python
+        run: python3 conformance.py
+
+      # The SVG files are generated. Regenerating must be a no-op, otherwise someone edited
+      # the output instead of the generator and the figures have started to drift apart.
+      - name: Check the diagrams match their generator
+        run: |
+          python3 assets/diagrams/build.py
+          git diff --exit-code -- assets/diagrams

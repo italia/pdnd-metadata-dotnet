@@ -62,17 +62,28 @@ def main() -> int:
         if vector["group"] == "adversarial":
             continue
 
-        for name, value in headers.items():
-            token = value[len("Bearer "):] if value.startswith("Bearer ") else value
-            if token.count(".") not in (1, 2, 4):
+        for name, raw in headers.items():
+            # A header value may be a single string or a list, when the vector exercises
+            # repetition. Both shapes are valid input to an implementation.
+            values = raw if isinstance(raw, list) else [raw]
+            if not all(isinstance(v, str) for v in values):
+                errors.append(f"{label}: header '{name}' must be a string or a list of strings")
                 continue
-            for segment in token.split(".")[:2]:
-                if not segment:
+
+            for value in values:
+                token = value[len("Bearer "):] if value.lower().startswith("bearer ") else value
+                if token.count(".") not in (1, 2, 4):
                     continue
-                try:
-                    json.loads(b64url_decode(segment))
-                except Exception as exc:
-                    errors.append(f"{label}: header '{name}' segment does not decode to JSON ({exc})")
+
+                # A five-segment JWE has an encrypted payload, so only the JOSE header is JSON.
+                decodable = 1 if token.count(".") == 4 else 2
+                for segment in token.split(".")[:decodable]:
+                    if not segment:
+                        continue
+                    try:
+                        json.loads(b64url_decode(segment))
+                    except Exception as exc:
+                        errors.append(f"{label}: header '{name}' segment does not decode to JSON ({exc})")
 
     if errors:
         print(f"{len(errors)} problem(s) found:", file=sys.stderr)

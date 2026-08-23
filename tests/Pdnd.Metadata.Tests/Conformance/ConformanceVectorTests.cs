@@ -41,9 +41,15 @@ public sealed class ConformanceVectorTests
             .EnumerateArray()
             .Single(v => v.GetProperty("id").GetString() == vectorId);
 
+        // A vector header value is either a string or, when the vector exercises repetition,
+        // an array of strings.
         var headers = vector.GetProperty("request").GetProperty("headers")
             .EnumerateObject()
-            .Select(p => new PdndRequestHeader(p.Name, new[] { p.Value.GetString()! }))
+            .Select(p => new PdndRequestHeader(
+                p.Name,
+                p.Value.ValueKind == JsonValueKind.Array
+                    ? p.Value.EnumerateArray().Select(v => v.GetString()!).ToArray()
+                    : new[] { p.Value.GetString()! }))
             .ToList();
 
         var context = new PdndRequestContext

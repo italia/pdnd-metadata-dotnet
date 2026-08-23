@@ -30,6 +30,20 @@ Questa libreria lo fa una volta sola, in modo uniforme, e produce uno snapshot c
 stabili. Il vocabolario di chiavi è definito in una specifica separata, cosicché due servizi della
 stessa amministrazione registrino lo stesso fatto sotto lo stesso nome.
 
+## Dove si colloca
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/architecture-dark.svg">
+    <img src="assets/diagrams/architecture.svg" alt="Collocazione architetturale">
+  </picture>
+</p>
+
+Il middleware gira dentro il servizio erogatore, dopo il reverse proxy e prima della validazione.
+Non partecipa alla decisione di fiducia, e non respinge mai una richiesta.
+
+## In pratica
+
 ```csharp
 var md = accessor.Current;
 
@@ -39,6 +53,13 @@ md.GetFirstValue(PdndMetadataKeys.CorrelationId);              // "b7c1..."
 ```
 
 ## Confini
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/pipeline-dark.svg">
+    <img src="assets/diagrams/pipeline.svg" alt="Pipeline di estrazione">
+  </picture>
+</p>
 
 La libreria estrae e normalizza. Non verifica.
 
@@ -141,6 +162,13 @@ Le chiavi seguono uno schema gerarchico. Questi sono i prefissi.
 | `http.header.*` | Header grezzi, quando la cattura è abilitata |
 | `metadata.truncated` | Presente quando la cattura si è fermata a un limite configurato |
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/keyspace-dark.svg">
+    <img src="assets/diagrams/keyspace.svg" alt="Namespace delle chiavi canoniche">
+  </picture>
+</p>
+
 L'elenco completo, con il claim di origine di ogni chiave, si trova in
 [`spec/PDND_METADATA_SCHEMA.md`](spec/PDND_METADATA_SCHEMA.md).
 
@@ -194,8 +222,17 @@ conformità in formato neutro rispetto al linguaggio. Ogni vettore associa un in
 ingresso alle chiavi che un'implementazione conforme deve produrre, e a quelle che non deve
 produrre.
 
-Il corpus viene eseguito dalla suite di test di questa libreria. Un'implementazione in un altro
-linguaggio può eseguire gli stessi vettori con poche decine di righe.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/conformance-dark.svg">
+    <img src="assets/diagrams/conformance.svg" alt="Modello di conformità">
+  </picture>
+</p>
+
+Il corpus viene eseguito dalla suite di test di questa libreria e da una seconda implementazione
+di riferimento in Python, scritta dalla specifica e non portata dal C#. La seconda implementazione
+non si pubblica e non ha utenti: serve a dimostrare che la specifica è completa, e a scoprire dove
+non lo è.
 
 Il gruppo `adversarial` è la parte più utile: copre token a quattro segmenti, caratteri Base64
 standard dove serve Base64Url, UTF-8 non valido che un decoder permissivo sostituisce in silenzio,

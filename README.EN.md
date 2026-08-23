@@ -29,6 +29,20 @@ This library does that once, uniformly, and produces a snapshot with stable key 
 vocabulary is defined in a separate specification, so that two services in the same organisation
 record the same fact under the same name.
 
+## Where it sits
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/architecture-dark.svg">
+    <img src="assets/diagrams/architecture.svg" alt="Architectural placement">
+  </picture>
+</p>
+
+The middleware runs inside the provider service, after the reverse proxy and before validation.
+It takes no part in the trust decision, and it never rejects a request.
+
+## In practice
+
 ```csharp
 var md = accessor.Current;
 
@@ -38,6 +52,13 @@ md.GetFirstValue(PdndMetadataKeys.CorrelationId);              // "b7c1..."
 ```
 
 ## Boundaries
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/pipeline-dark.svg">
+    <img src="assets/diagrams/pipeline.svg" alt="Extraction pipeline">
+  </picture>
+</p>
 
 The library extracts and normalizes. It does not verify.
 
@@ -140,6 +161,13 @@ Keys follow a hierarchical scheme. These are the prefixes.
 | `http.header.*` | Raw headers, when capture is enabled |
 | `metadata.truncated` | Present when capture stopped at a configured bound |
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/keyspace-dark.svg">
+    <img src="assets/diagrams/keyspace.svg" alt="Canonical key namespace">
+  </picture>
+</p>
+
 The full list, with the source claim for every key, is in
 [`spec/PDND_METADATA_SCHEMA.md`](spec/PDND_METADATA_SCHEMA.md).
 
@@ -188,8 +216,17 @@ The [`spec/`](spec/) directory holds the canonical key vocabulary and a language
 conformance vectors. Each vector pairs a set of inbound headers with the keys a conforming
 implementation must produce, and with the keys it must not produce.
 
-The corpus is executed by this library's test suite. An implementation in another language can run
-the same vectors in a few dozen lines.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/conformance-dark.svg">
+    <img src="assets/diagrams/conformance.svg" alt="Conformance model">
+  </picture>
+</p>
+
+The corpus is executed by this library's test suite and by a second reference implementation in
+Python, written from the specification rather than ported from the C#. That implementation is not
+published and has no users: it exists to prove the specification is complete, and to find where it
+is not.
 
 The `adversarial` group is the most useful part. It covers four-segment tokens, standard Base64
 characters where Base64Url is required, invalid UTF-8 that a lenient decoder silently replaces, and
