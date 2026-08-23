@@ -9,10 +9,18 @@ public sealed class PdndMetadataOptions
 {
     private readonly HashSet<string> _headerDenyList = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Do not store raw tokens/cookies in metadata.
+        // Never store raw credentials in metadata. A deny list is a backstop rather than the
+        // primary control: the primary control is CaptureAllHeaders being false by default.
         "Authorization",
+        "Proxy-Authorization",
+        "Authentication",
         "Cookie",
-        "Set-Cookie"
+        "Set-Cookie",
+        "X-Api-Key",
+        "Api-Key",
+        "X-Auth-Token",
+        "X-Access-Token",
+        "X-Csrf-Token"
     };
 
     private readonly HashSet<string> _headerAllowList = new(StringComparer.OrdinalIgnoreCase)
@@ -41,7 +49,11 @@ public sealed class PdndMetadataOptions
     /// Gets or sets whether all headers should be captured as raw metadata items.
     /// When enabled, headers are still subject to <see cref="HeaderDenyList"/>.
     /// </summary>
-    public bool CaptureAllHeaders { get; set; } = true;
+    /// <remarks>
+    /// Defaults to <c>false</c>. Capturing every inbound header retains any bespoke credential
+    /// header the deny list does not know about, so opting in is a deliberate decision.
+    /// </remarks>
+    public bool CaptureAllHeaders { get; set; } = false;
 
     /// <summary>
     /// Gets the list of header names that must never be captured as raw metadata (e.g., secrets).
@@ -55,9 +67,29 @@ public sealed class PdndMetadataOptions
     /// </summary>
     public ISet<string> HeaderAllowList => _headerAllowList;
 
+    private int _maxHeaderCount = 64;
     private int _maxHeaderValuesPerName = 10;
     private int _maxValueLength = 2048;
     private int _maxTokenLength = 16_384;
+
+    /// <summary>
+    /// Gets or sets the maximum number of distinct header names to capture.
+    /// Once reached, header capture stops and <see cref="Extraction.PdndMetadataKeys.MetadataTruncated"/>
+    /// is emitted so that truncation is distinguishable from absence.
+    /// Must be at least 1.
+    /// </summary>
+    /// <remarks>
+    /// Kestrel already caps request headers well below this value, so in a default ASP.NET Core
+    /// deployment the limit is never reached. It exists because the core package is
+    /// transport-agnostic and cannot assume any such upstream bound.
+    /// </remarks>
+    public int MaxHeaderCount
+    {
+        get => _maxHeaderCount;
+        set => _maxHeaderCount = value < 1
+            ? throw new ArgumentOutOfRangeException(nameof(MaxHeaderCount), value, "Value must be at least 1.")
+            : value;
+    }
 
     /// <summary>
     /// Gets or sets the maximum number of values per header to capture.
@@ -165,4 +197,37 @@ public sealed class PdndMetadataOptions
     /// Strongly consider leaving this false to avoid storing signed blobs.
     /// </summary>
     public bool CaptureRawSignatureHeader { get; set; } = false;
+
+    /// <summary>
+    /// Gets the request path prefixes for which extraction is skipped entirely.
+    /// Comparisons are case-insensitive and prefix-based.
+    /// </summary>
+    /// <remarks>
+    /// Health probes, metrics scrapes, and static files pay the full extraction cost and produce
+    /// a snapshot nobody reads. Populate this to skip them.
+    /// </remarks>
+    public IList<string> PathExclusions { get; } = new List<string>();
+
+    /// <summary>
+    /// Returns whether extraction should be skipped for the given request path.
+    /// </summary>
+    /// <param name="path">Request path, for example <c>/health</c>.</param>
+    /// <returns><c>true</c> when the path matches an exclusion prefix.</returns>
+    public bool IsPathExcluded(string? path)
+    {
+        if (string.IsNullOrEmpty(path) || PathExclusions.Count == 0)
+            return false;
+
+        for (var i = 0; i < PathExclusions.Count; i++)
+        {
+            var prefix = PathExclusions[i];
+            if (!string.IsNullOrEmpty(prefix) &&
+                path!.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

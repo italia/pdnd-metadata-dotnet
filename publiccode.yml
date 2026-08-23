@@ -6,10 +6,10 @@ publiccodeYmlVersion: "0.5"
 name: "Pdnd.Metadata"
 url: "https://github.com/italia/pdnd-metadata-dotnet"
 landingURL: "https://github.com/italia/pdnd-metadata-dotnet"
-softwareVersion: "1.0.0"
-releaseDate: "2026-03-23"
+softwareVersion: "2.0.0"
+releaseDate: "2026-08-23"
 softwareType: "library"
-developmentStatus: "stable"
+developmentStatus: "beta"
 platforms:
   - windows
   - linux
@@ -18,9 +18,9 @@ categories:
   - it-development
   - application-development
 organisation:
-  name: "Developers Italia"
-  url: "https://developers.italia.it"
-  type: "government"
+  name: "Francesco Del Re"
+  url: "https://github.com/engineering87"
+  type: "private"
 description:
   en:
     shortDescription: ".NET library for extracting PDND request metadata"
@@ -30,6 +30,7 @@ description:
       tracking evidence and distributed tracing metadata.
     features:
       - Automatic PDND metadata extraction
+      - Shared conformance vector corpus
       - Standardized metadata snapshot
       - Correlation and distributed tracing support
       - Safe handling of sensitive headers

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Pdnd.Metadata/Pdnd.Metadata.csproj" />
+    <Project Path="src/Pdnd.Metadata.AspNetCore/Pdnd.Metadata.AspNetCore.csproj" />
+    <Project Path="src/Pdnd.Metadata.Diagnostics/Pdnd.Metadata.Diagnostics.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pdnd.Metadata.Tests/Pdnd.Metadata.Tests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Pdnd.Metadata.SampleApi/Pdnd.Metadata.SampleApi.csproj" />
+  </Folder>
+</Solution>

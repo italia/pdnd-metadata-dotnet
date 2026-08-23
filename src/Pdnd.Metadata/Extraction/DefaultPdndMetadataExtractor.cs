@@ -22,6 +22,10 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
 
         var md = new PdndCallerMetadata();
 
+        // Built once: the PDND extraction path looks up at least nine well-known headers,
+        // and a linear scan per lookup is paid on every request.
+        var headerLookup = BuildHeaderLookup(context);
+
         // Basic HTTP info
         if (!string.IsNullOrWhiteSpace(context.Method))
             md.Add(PdndMetadataKeys.HttpMethod, context.Method, PdndMetadataSource.Derived);
@@ -68,7 +72,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         }
 
         // PDND extraction (best-effort, no validation, fail-soft)
-        ExtractPdnd(md, context, options);
+        ExtractPdnd(md, headerLookup, options);
 
         // Headers (raw)
         CaptureHeaders(md, context, options);
@@ -76,7 +80,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         // Forwarded headers normalization
         if (options.NormalizeForwardedHeaders)
         {
-            NormalizeForwardedFor(md, context, options);
+            NormalizeForwardedFor(md, headerLookup, options);
         }
 
         // Claims (informative; may be empty)
@@ -91,12 +95,12 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         return md;
     }
 
-    private static void ExtractPdnd(PdndCallerMetadata md, PdndRequestContext context, PdndMetadataOptions options)
+    private static void ExtractPdnd(PdndCallerMetadata md, IReadOnlyDictionary<string, string?> headers, PdndMetadataOptions options)
     {
         // 1) Voucher in Authorization: Bearer <JWT>
         if (options.ParsePdndVoucherFromAuthorizationBearer)
         {
-            var auth = GetHeaderFirst(context, PdndHeaderNames.Authorization);
+            var auth = GetHeaderFirst(headers, PdndHeaderNames.Authorization);
             if (PdndAuthorization.TryGetBearerToken(auth, out var bearerToken) &&
                 IsTokenLengthAllowed(bearerToken, options) &&
                 JwtDecoder.TryDecode(bearerToken!, out var jwt))
@@ -108,8 +112,8 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         // 2) Tracking evidence header (JWS/JWT)
         if (options.ParsePdndTrackingEvidence)
         {
-            var te = GetHeaderFirst(context, PdndHeaderNames.AgidJwtTrackingEvidence)
-                     ?? GetHeaderFirst(context, PdndHeaderNames.AgidJwtTrackingEvidenceAlt);
+            var te = GetHeaderFirst(headers, PdndHeaderNames.AgidJwtTrackingEvidence)
+                     ?? GetHeaderFirst(headers, PdndHeaderNames.AgidJwtTrackingEvidenceAlt);
 
             if (!string.IsNullOrWhiteSpace(te) &&
                 IsTokenLengthAllowed(te, options) &&
@@ -122,7 +126,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         // 3) DPoP header (JWS/JWT-like proof)
         if (options.ParseDpopHeader)
         {
-            var dpop = GetHeaderFirst(context, PdndHeaderNames.DPoP);
+            var dpop = GetHeaderFirst(headers, PdndHeaderNames.DPoP);
             if (!string.IsNullOrWhiteSpace(dpop) &&
                 IsTokenLengthAllowed(dpop, options) &&
                 JwtDecoder.TryDecode(dpop!, out var proof))
@@ -134,7 +138,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         // 4) Digest header (best-effort)
         if (options.ParseDigestHeader)
         {
-            var digest = GetHeaderFirst(context, PdndHeaderNames.Digest);
+            var digest = GetHeaderFirst(headers, PdndHeaderNames.Digest);
             if (!string.IsNullOrWhiteSpace(digest) &&
                 DigestParser.TryParseDigestHeader(digest!, out var alg, out var value))
             {
@@ -149,7 +153,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         // 5) Content-Digest header (RFC 9530, replaces legacy Digest)
         if (options.ParseContentDigestHeader)
         {
-            var contentDigest = GetHeaderFirst(context, PdndHeaderNames.ContentDigest);
+            var contentDigest = GetHeaderFirst(headers, PdndHeaderNames.ContentDigest);
             if (!string.IsNullOrWhiteSpace(contentDigest) &&
                 DigestParser.TryParseContentDigestHeader(contentDigest!, out var cdAlg, out var cdValue))
             {
@@ -164,7 +168,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         // 6) Agid-JWT-Signature header (PDND request signing)
         if (options.ParseAgidJwtSignature)
         {
-            var sig = GetHeaderFirst(context, PdndHeaderNames.AgidJwtSignature);
+            var sig = GetHeaderFirst(headers, PdndHeaderNames.AgidJwtSignature);
             if (!string.IsNullOrWhiteSpace(sig) &&
                 IsTokenLengthAllowed(sig, options) &&
                 JwtDecoder.TryDecode(sig!, out var sigToken))
@@ -200,10 +204,18 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
 
     private static void CaptureHeaders(PdndCallerMetadata md, PdndRequestContext context, PdndMetadataOptions options)
     {
+        var captured = 0;
+
         foreach (var h in context.Headers)
         {
             if (string.IsNullOrWhiteSpace(h.Name))
                 continue;
+
+            if (captured >= options.MaxHeaderCount)
+            {
+                md.Add(PdndMetadataKeys.MetadataTruncated, "headers", PdndMetadataSource.Derived);
+                break;
+            }
 
             // Special cases: signed blobs can be suppressed from raw capture
             if (PdndHeaderNames.IsTrackingEvidenceHeader(h.Name) && !options.CaptureRawTrackingEvidenceHeader)
@@ -224,6 +236,8 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
             if (!options.CaptureAllHeaders && !options.HeaderAllowList.Contains(h.Name))
                 continue;
 
+            captured++;
+
             var values = h.Values?.Take(Math.Max(1, options.MaxHeaderValuesPerName)) ?? Enumerable.Empty<string>();
             foreach (var v in values)
             {
@@ -238,10 +252,10 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         }
     }
 
-    private static void NormalizeForwardedFor(PdndCallerMetadata md, PdndRequestContext context, PdndMetadataOptions options)
+    private static void NormalizeForwardedFor(PdndCallerMetadata md, IReadOnlyDictionary<string, string?> headers, PdndMetadataOptions options)
     {
-        var forwarded = GetHeaderFirst(context, "Forwarded");
-        var xff = GetHeaderFirst(context, "X-Forwarded-For");
+        var forwarded = GetHeaderFirst(headers, "Forwarded");
+        var xff = GetHeaderFirst(headers, "X-Forwarded-For");
 
         var chain = new List<string>();
 
@@ -283,11 +297,25 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         }
     }
 
-    private static string? GetHeaderFirst(PdndRequestContext context, string name)
+    private static Dictionary<string, string?> BuildHeaderLookup(PdndRequestContext context)
     {
-        var header = context.Headers.FirstOrDefault(h => name.Equals(h.Name, StringComparison.OrdinalIgnoreCase));
-        return header?.Values?.FirstOrDefault();
+        var lookup = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var header in context.Headers)
+        {
+            if (string.IsNullOrWhiteSpace(header.Name))
+                continue;
+
+            // First value wins, matching the previous FirstOrDefault behaviour.
+            if (!lookup.ContainsKey(header.Name))
+                lookup[header.Name] = header.Values?.FirstOrDefault();
+        }
+
+        return lookup;
     }
+
+    private static string? GetHeaderFirst(IReadOnlyDictionary<string, string?> headers, string name)
+        => headers.TryGetValue(name, out var value) ? value : null;
 
     private static string Truncate(string value, int maxLen)
         => maxLen <= 0 ? string.Empty : value.Length <= maxLen ? value : value.Substring(0, maxLen);

@@ -16,30 +16,60 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: |
-          8.0.x
-          10.0.x
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
-    - name: Restore
-      run: dotnet restore src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx
+      # The package version comes from the tag, so tag, release, and published package
+      # cannot disagree. A tag of v2.0.0 produces packages versioned 2.0.0.
+      - name: Derive version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ]; then
+            echo "Refusing to publish: tag name is empty." >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $VERSION"
 
-    - name: Build
-      run: dotnet build src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx --configuration Release --no-restore
+      - name: Verify the tag matches VersionPrefix
+        run: |
+          PREFIX=$(grep -oPm1 '(?<=<VersionPrefix>)[^<]+' Directory.Build.props)
+          if [ "$PREFIX" != "${{ steps.version.outputs.version }}" ]; then
+            echo "Tag ${{ steps.version.outputs.version }} does not match VersionPrefix $PREFIX." >&2
+            exit 1
+          fi
 
-    - name: Test
-      run: dotnet test src/pdnd-metadata-dotnet/pdnd-metadata-dotnet.slnx --configuration Release --no-build --verbosity normal
+      - name: Restore
+        run: dotnet restore Pdnd.Metadata.slnx
 
-    - name: Pack Pdnd.Metadata
-      run: dotnet pack src/Pdnd.Metadata/Pdnd.Metadata.csproj --configuration Release --no-build --output ./nupkgs
+      - name: Build
+        run: dotnet build Pdnd.Metadata.slnx --configuration Release --no-restore
 
-    - name: Pack Pdnd.Metadata.AspNetCore
-      run: dotnet pack src/Pdnd.Metadata.AspNetCore/Pdnd.Metadata.AspNetCore.csproj --configuration Release --no-build --output ./nupkgs
+      - name: Test
+        run: dotnet test Pdnd.Metadata.slnx --configuration Release --no-build --verbosity normal
 
-    - name: Push to NuGet
-      run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Pack
+        run: |
+          for project in \
+            src/Pdnd.Metadata/Pdnd.Metadata.csproj \
+            src/Pdnd.Metadata.AspNetCore/Pdnd.Metadata.AspNetCore.csproj \
+            src/Pdnd.Metadata.Diagnostics/Pdnd.Metadata.Diagnostics.csproj
+          do
+            dotnet pack "$project" --configuration Release --no-build \
+              -p:PackageVersion=${{ steps.version.outputs.version }} --output ./nupkgs
+          done
+
+      - name: Push to NuGet
+        run: >
+          dotnet nuget push ./nupkgs/*.nupkg
+          --api-key ${{ secrets.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

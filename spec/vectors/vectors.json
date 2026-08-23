@@ -1,0 +1,348 @@
+{
+  "$schema": "./vectors.schema.json",
+  "specVersion": "1.0.0",
+  "description": "Conformance vectors for PDND request metadata extraction. Each vector pairs a set of inbound HTTP headers with the canonical metadata keys an implementation is expected to produce. Keys listed under __absent__ must not be produced.",
+  "license": "MIT",
+  "source": "https://github.com/italia/pdnd-metadata-dotnet",
+  "vectors": [
+    {
+      "id": "voucher-001",
+      "group": "voucher",
+      "description": "Standard PDND voucher with platform-specific claims.",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImtpZC0wMDEiLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJ1YXQuaW50ZXJvcC5wYWdvcGEuaXQiLCJzdWIiOiJjbGllbnQtMDAxIiwiYXVkIjoiZXJvZ2F0b3JlLmV4YW1wbGUuaXQiLCJqdGkiOiJqdGktMDAxIiwiaWF0IjoxNzUwMDAwMDAwLCJuYmYiOjE3NTAwMDAwMDAsImV4cCI6MTc1MDAwMzYwMCwicHVycG9zZUlkIjoicHVycG9zZS0wMDEiLCJjbGllbnRfaWQiOiJjbGllbnQtMDAxIiwib3JnYW5pemF0aW9uSWQiOiJvcmctMDAxIn0.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.voucher.alg": "RS256",
+        "pdnd.voucher.kid": "kid-001",
+        "pdnd.voucher.typ": "at+jwt",
+        "pdnd.voucher.iss": "uat.interop.pagopa.it",
+        "pdnd.voucher.sub": "client-001",
+        "pdnd.voucher.aud": "erogatore.example.it",
+        "pdnd.voucher.jti": "jti-001",
+        "pdnd.voucher.purposeId": "purpose-001",
+        "pdnd.voucher.organizationId": "org-001"
+      }
+    },
+    {
+      "id": "voucher-002",
+      "group": "voucher",
+      "description": "Audience encoded as an array is normalized to a comma-separated string.",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJSUzI1NiJ9.eyJhdWQiOlsiZmlyc3QuZXhhbXBsZS5pdCIsInNlY29uZC5leGFtcGxlLml0Il19.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.voucher.aud": "first.example.it, second.example.it"
+      }
+    },
+    {
+      "id": "voucher-003",
+      "group": "voucher",
+      "description": "The raw Authorization header is never surfaced as metadata.",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJ4In0.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "http.header.authorization"
+        ]
+      },
+      "notes": "This is the single most important invariant of the extraction layer."
+    },
+    {
+      "id": "voucher-004",
+      "group": "voucher",
+      "description": "A non-Bearer Authorization scheme yields no voucher claims.",
+      "request": {
+        "headers": {
+          "Authorization": "Basic dXNlcjpwYXNz"
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "pdnd.voucher.iss",
+          "http.header.authorization"
+        ]
+      }
+    },
+    {
+      "id": "signature-001",
+      "group": "signature",
+      "description": "ModI signed_headers as an array of single-property objects.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "eyJhbGciOiJSUzI1NiIsImtpZCI6InNpZy1raWQtMDAxIn0.eyJpc3MiOiJmcnVpdG9yZSIsImF1ZCI6ImVyb2dhdG9yZS5leGFtcGxlLml0IiwiaWF0IjoxNzUwMDAwMDAwLCJleHAiOjE3NTAwMDAzMDAsInNpZ25lZF9oZWFkZXJzIjpbeyJkaWdlc3QiOiJTSEEtMjU2PVJCTnZvMVd6WjRvUlJxMFc5K2hrbnBUN1Q4SWY1MzZERU1CZzloeXEvNG89In0seyJjb250ZW50LXR5cGUiOiJhcHBsaWNhdGlvbi9qc29uIn1dfQ.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.signature.kid": "sig-kid-001",
+        "pdnd.signature.signed_headers": "digest, content-type",
+        "pdnd.signature.signed_header.digest": "SHA-256=RBNvo1WzZ4oRRq0W9+hknpT7T8If536DEMBg9hyq/4o=",
+        "pdnd.signature.signed_header.content-type": "application/json"
+      },
+      "notes": "The canonical encoding. An implementation that reads this claim as a scalar silently drops it."
+    },
+    {
+      "id": "signature-002",
+      "group": "signature",
+      "description": "Header names are lowercased regardless of the casing sent.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "eyJhbGciOiJSUzI1NiJ9.eyJzaWduZWRfaGVhZGVycyI6W3siRGlnZXN0IjoiU0hBLTI1Nj1hYmM9In0seyJDb250ZW50LVR5cGUiOiJhcHBsaWNhdGlvbi9qc29uIn1dfQ.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.signature.signed_headers": "digest, content-type"
+      }
+    },
+    {
+      "id": "signature-003",
+      "group": "signature",
+      "description": "Array of header names without values, a non-conformant but observed shape.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "eyJhbGciOiJSUzI1NiJ9.eyJzaWduZWRfaGVhZGVycyI6WyJkaWdlc3QiLCJjb250ZW50LXR5cGUiXX0.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.signature.signed_headers": "digest, content-type",
+        "__absent__": [
+          "pdnd.signature.signed_header.digest"
+        ]
+      },
+      "notes": "Names are recorded; no per-header value key is emitted because no value was carried."
+    },
+    {
+      "id": "signature-004",
+      "group": "signature",
+      "description": "Empty array produces no key, so absence and emptiness are indistinguishable.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "eyJhbGciOiJSUzI1NiJ9.eyJzaWduZWRfaGVhZGVycyI6W119.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "pdnd.signature.signed_headers"
+        ]
+      }
+    },
+    {
+      "id": "signature-005",
+      "group": "signature",
+      "description": "Malformed scalar claim is ignored without failing the request.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "eyJhbGciOiJSUzI1NiJ9.eyJzaWduZWRfaGVhZGVycyI6NDJ9.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "pdnd.signature.signed_headers"
+        ]
+      }
+    },
+    {
+      "id": "digest-001",
+      "group": "digest",
+      "description": "Legacy Digest header, RFC 3230 style.",
+      "request": {
+        "headers": {
+          "Digest": "SHA-256=RBNvo1WzZ4oRRq0W9+hknpT7T8If536DEMBg9hyq/4o="
+        }
+      },
+      "expect": {
+        "pdnd.digest.alg": "SHA-256",
+        "pdnd.digest.value": "RBNvo1WzZ4oRRq0W9+hknpT7T8If536DEMBg9hyq/4o="
+      }
+    },
+    {
+      "id": "digest-002",
+      "group": "digest",
+      "description": "Content-Digest as an RFC 9530 byte sequence.",
+      "request": {
+        "headers": {
+          "Content-Digest": "sha-256=:RBNvo1WzZ4oRRq0W9+hknpT7T8If536DEMBg9hyq/4o=:"
+        }
+      },
+      "expect": {
+        "pdnd.content_digest.alg": "sha-256",
+        "pdnd.content_digest.value": "RBNvo1WzZ4oRRq0W9+hknpT7T8If536DEMBg9hyq/4o="
+      }
+    },
+    {
+      "id": "digest-003",
+      "group": "digest",
+      "description": "Content-Digest with structured field parameters.",
+      "request": {
+        "headers": {
+          "Content-Digest": "sha-256=:abc=:;keyid=\"k1\""
+        }
+      },
+      "expect": {
+        "pdnd.content_digest.alg": "sha-256",
+        "pdnd.content_digest.value": "abc="
+      },
+      "notes": "Parameters are stripped. The colons delimiting the byte sequence are removed after the parameters."
+    },
+    {
+      "id": "digest-004",
+      "group": "digest",
+      "description": "Multiple digests: the first parseable entry wins.",
+      "request": {
+        "headers": {
+          "Content-Digest": "sha-512=:zzz=:, sha-256=:abc=:"
+        }
+      },
+      "expect": {
+        "pdnd.content_digest.alg": "sha-512",
+        "pdnd.content_digest.value": "zzz="
+      }
+    },
+    {
+      "id": "dpop-001",
+      "group": "dpop",
+      "description": "DPoP proof carrying ath and nonce, RFC 9449.",
+      "request": {
+        "headers": {
+          "DPoP": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0In0.eyJodG0iOiJQT1NUIiwiaHR1IjoiaHR0cHM6Ly9lcm9nYXRvcmUuZXhhbXBsZS5pdC92MS9yZXNvdXJjZSIsImp0aSI6ImRwb3AtanRpLTAwMSIsImlhdCI6MTc1MDAwMDAwMCwiYXRoIjoiZlVIeU8ycjJaM0RaNTNFc05yV0JiMHhXWG9hTnk1OUlpS0NBcWtzbVFFbyIsIm5vbmNlIjoic3J2LW5vbmNlLTAwMSJ9.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.dpop.alg": "ES256",
+        "pdnd.dpop.typ": "dpop+jwt",
+        "pdnd.dpop.htm": "POST",
+        "pdnd.dpop.htu": "https://erogatore.example.it/v1/resource",
+        "pdnd.dpop.ath": "fUHyO2r2Z3DZ53EsNrWBb0xWXoaNy59IiKCAqksmQEo",
+        "pdnd.dpop.nonce": "srv-nonce-001"
+      }
+    },
+    {
+      "id": "tracking-001",
+      "group": "tracking-evidence",
+      "description": "Tracking evidence under the hyphenated header spelling.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Tracking-Evidence": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRlLWtpZCJ9.eyJpc3MiOiJmcnVpdG9yZSIsInN1YiI6ImNsaWVudC0wMDEiLCJqdGkiOiJ0ZS1qdGktMDAxIiwiaWF0IjoxNzUwMDAwMDAwLCJleHAiOjE3NTAwMDAzMDB9.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.trackingEvidence.kid": "te-kid",
+        "pdnd.trackingEvidence.jti": "te-jti-001"
+      }
+    },
+    {
+      "id": "tracking-002",
+      "group": "tracking-evidence",
+      "description": "Tracking evidence under the concatenated header spelling.",
+      "request": {
+        "headers": {
+          "AgID-JWT-TrackingEvidence": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRlLWtpZCJ9.eyJqdGkiOiJ0ZS1qdGktMDAyIn0.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.trackingEvidence.kid": "te-kid",
+        "pdnd.trackingEvidence.jti": "te-jti-002"
+      },
+      "notes": "Both spellings appear in PDND documentation. An implementation must accept either."
+    },
+    {
+      "id": "adversarial-001",
+      "group": "adversarial",
+      "description": "Four-segment token is neither JWS nor JWE and must be rejected.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "aaaa.bbbb.cccc.dddd"
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "pdnd.signature.alg"
+        ]
+      }
+    },
+    {
+      "id": "adversarial-002",
+      "group": "adversarial",
+      "description": "Non-Base64Url characters must not decode.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "eyJhbGciOiJSUzI1NiJ9.ab+cd/ef.sig"
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "pdnd.signature.alg"
+        ]
+      },
+      "notes": "Convert.FromBase64String tolerates standard-Base64 characters, so a naive implementation accepts this."
+    },
+    {
+      "id": "adversarial-003",
+      "group": "adversarial",
+      "description": "Invalid UTF-8 in a decoded segment must be rejected, not replaced.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "wyg.e30.sig"
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "pdnd.signature.alg"
+        ]
+      },
+      "notes": "A lenient UTF-8 decoder substitutes U+FFFD and produces a mangled string instead of failing here."
+    },
+    {
+      "id": "adversarial-004",
+      "group": "adversarial",
+      "description": "Well-formed Base64Url that is not JSON must not throw.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "bm90LWpzb24.YWxzby1ub3QtanNvbg.sig"
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "pdnd.signature.alg"
+        ]
+      }
+    },
+    {
+      "id": "adversarial-005",
+      "group": "adversarial",
+      "description": "Empty Bearer token yields nothing.",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer "
+        }
+      },
+      "expect": {
+        "__absent__": [
+          "pdnd.voucher.iss"
+        ]
+      }
+    },
+    {
+      "id": "adversarial-006",
+      "group": "adversarial",
+      "description": "alg none must be recorded, never treated as trust.",
+      "request": {
+        "headers": {
+          "Agid-JWT-Signature": "eyJhbGciOiJub25lIn0.eyJpc3MiOiJhdHRhY2tlciJ9.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.signature.alg": "none",
+        "pdnd.signature.iss": "attacker"
+      },
+      "notes": "The extraction layer reports what was sent. Rejecting alg none is the validation layer's job, and this vector exists to make that division explicit."
+    }
+  ]
+}

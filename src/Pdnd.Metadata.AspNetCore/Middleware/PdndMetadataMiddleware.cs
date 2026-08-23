@@ -42,6 +42,12 @@ public sealed class PdndMetadataMiddleware
         IPdndMetadataExtractor extractor,
         IOptions<PdndMetadataOptions> options)
     {
+        if (options.Value.IsPathExcluded(context.Request.Path.Value))
+        {
+            await _next(context);
+            return;
+        }
+
         if (!context.Items.ContainsKey(PdndMetadataAspNetCoreConstants.HttpContextItemKey))
         {
             try

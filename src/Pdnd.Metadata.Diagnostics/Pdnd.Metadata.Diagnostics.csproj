@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>Pdnd.Metadata.Diagnostics</PackageId>
+    <Title>Pdnd.Metadata.Diagnostics</Title>
+    <Description>Projects PDND request metadata onto System.Diagnostics Activity tags and metrics, consumable by OpenTelemetry without taking a dependency on it.</Description>
+    <PackageTags>pdnd;interoperabilita;modi;agid;opentelemetry;observability;tracing;metrics;italia;pa</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pdnd.Metadata\Pdnd.Metadata.csproj" />
+    <ProjectReference Include="..\Pdnd.Metadata.AspNetCore\Pdnd.Metadata.AspNetCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.400" />
+  </ItemGroup>
+
+</Project>

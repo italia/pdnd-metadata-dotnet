@@ -52,6 +52,13 @@ public static class PdndMetadataKeys
     /// <summary>Raw header prefix (canonical).</summary>
     public const string HeaderPrefix = "http.header.";
 
+    /// <summary>
+    /// Marker emitted when header capture stopped because
+    /// <c>PdndMetadataOptions.MaxHeaderCount</c> was reached. Its presence means the
+    /// snapshot is incomplete, so downstream consumers can tell truncation apart from absence.
+    /// </summary>
+    public const string MetadataTruncated = "metadata.truncated";
+
     /// <summary>Request ID.</summary>
     public const string RequestId = "request.id";
 
@@ -217,4 +224,11 @@ public static class PdndMetadataKeys
 
     /// <summary>Agid-JWT-Signature payload signed headers digest (if present).</summary>
     public const string PdndSignatureSignedHeaders = "pdnd.signature.signed_headers";
+
+    /// <summary>
+    /// Prefix for the value of each individual signed header carried by the
+    /// ModI <c>signed_headers</c> claim, for example <c>pdnd.signature.signed_header.digest</c>.
+    /// Header names are lowercased.
+    /// </summary>
+    public const string PdndSignatureSignedHeaderPrefix = "pdnd.signature.signed_header.";
 }

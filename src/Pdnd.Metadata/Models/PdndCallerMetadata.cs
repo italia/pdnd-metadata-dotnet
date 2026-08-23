@@ -4,8 +4,13 @@ namespace Pdnd.Metadata.Models;
 
 /// <summary>
 /// Aggregates metadata about the caller/request in a normalized structure.
-/// This class is thread-safe for concurrent Add operations.
 /// </summary>
+/// <remarks>
+/// In the shipped pipeline the snapshot is built by a single middleware invocation on one thread
+/// and read afterwards, so no synchronization is required for that flow. The lock is retained
+/// because the type is public and nothing prevents a consumer from adding to it from a
+/// background task or a parallel enrichment step.
+/// </remarks>
 public sealed class PdndCallerMetadata
 {
     private readonly Dictionary<string, List<PdndMetadataItem>> _items =
@@ -25,22 +30,31 @@ public sealed class PdndCallerMetadata
     private PdndCallerMetadata(DateTimeOffset createdAtUtc) => CreatedAtUtc = createdAtUtc;
 
     /// <summary>
-    /// Gets a read-only view of all metadata items grouped by key.
-    /// Each call returns a snapshot; items added after the call are not reflected.
+    /// Returns a point-in-time copy of all metadata items grouped by key.
+    /// Items added after the call are not reflected.
     /// </summary>
-    public IReadOnlyDictionary<string, IReadOnlyList<PdndMetadataItem>> Items
+    /// <remarks>
+    /// This is an O(n) copy of the whole snapshot, including an array allocation per key.
+    /// It is a method rather than a property so that the cost is visible at the call site:
+    /// call it once and reuse the result, do not call it inside a loop.
+    /// </remarks>
+    /// <returns>A copy of the metadata grouped by canonical key.</returns>
+    public IReadOnlyDictionary<string, IReadOnlyList<PdndMetadataItem>> Snapshot()
     {
-        get
+        lock (_lock)
         {
-            lock (_lock)
-            {
-                return _items.ToDictionary(
-                    kvp => kvp.Key,
-                    kvp => (IReadOnlyList<PdndMetadataItem>)kvp.Value.ToArray(),
-                    StringComparer.OrdinalIgnoreCase);
-            }
+            return _items.ToDictionary(
+                kvp => kvp.Key,
+                kvp => (IReadOnlyList<PdndMetadataItem>)kvp.Value.ToArray(),
+                StringComparer.OrdinalIgnoreCase);
         }
     }
+
+    /// <summary>
+    /// Gets a read-only view of all metadata items grouped by key.
+    /// </summary>
+    [Obsolete("Renamed to Snapshot(). This property allocates a full copy on every read, which a property name does not convey. Will be removed in 3.0.0.")]
+    public IReadOnlyDictionary<string, IReadOnlyList<PdndMetadataItem>> Items => Snapshot();
 
     /// <summary>
     /// Adds a metadata item to the snapshot.

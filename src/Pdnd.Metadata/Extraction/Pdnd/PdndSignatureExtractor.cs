@@ -44,7 +44,25 @@ public static class PdndSignatureExtractor
 
                 AddPayloadIfPresent(metadata, p, "iat", PdndMetadataKeys.PdndSignatureIat);
                 AddPayloadIfPresent(metadata, p, "exp", PdndMetadataKeys.PdndSignatureExp);
-                AddPayloadIfPresent(metadata, p, "signed_headers", PdndMetadataKeys.PdndSignatureSignedHeaders);
+
+                if (JwtJsonReader.TryReadSignedHeaders(p, out var signedHeaders))
+                {
+                    metadata.Add(
+                        PdndMetadataKeys.PdndSignatureSignedHeaders,
+                        string.Join(", ", signedHeaders.Select(h => h.Key)),
+                        PdndMetadataSource.Claims);
+
+                    foreach (var header in signedHeaders)
+                    {
+                        if (string.IsNullOrEmpty(header.Value))
+                            continue;
+
+                        metadata.Add(
+                            PdndMetadataKeys.PdndSignatureSignedHeaderPrefix + header.Key,
+                            header.Value,
+                            PdndMetadataSource.Claims);
+                    }
+                }
             }
         }
         catch

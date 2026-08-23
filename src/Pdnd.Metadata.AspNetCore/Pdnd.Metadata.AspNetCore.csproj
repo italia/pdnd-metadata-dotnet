@@ -5,18 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Pdnd.Metadata.AspNetCore</PackageId>
-    <Version>1.0.1</Version>
     <Description>ASP.NET Core integration for Pdnd.Metadata — middleware, DI registration, model binding, and Minimal API support for PDND metadata extraction.</Description>
     <PackageTags>pdnd;interoperabilita;modi;agid;aspnetcore;middleware;metadata;voucher;tracking-evidence;dpop;italia;pa</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Title>Pdnd.Metadata.AspNetCore</Title>
-    <Authors>Francesco Del Re</Authors>
-    <Copyright>Copyright (c) Francesco Del Re</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/italia/pdnd-metadata-dotnet</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/italia/pdnd-metadata-dotnet</PackageProjectUrl>
-    <RepositoryType>git</RepositoryType>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,6 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.301" />
+    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.400" />
   </ItemGroup>
 </Project>

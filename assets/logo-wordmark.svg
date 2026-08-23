@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 96" width="460" height="96" role="img" aria-label="Pdnd.Metadata">
+  <title>Pdnd.Metadata</title>
+
+  <!-- Mark -->
+  <g fill="#8794A3">
+    <rect x="8" y="16" width="24" height="12" rx="6"/>
+    <rect x="38" y="16" width="32" height="12" rx="6"/>
+    <rect x="76" y="16" width="12" height="12" rx="6"/>
+  </g>
+  <g>
+    <rect x="8" y="44" width="12" height="12" rx="3" fill="#0066CC"/>
+    <rect x="26" y="44" width="40" height="12" rx="6" fill="#0066CC" opacity="0.35"/>
+    <rect x="8" y="68" width="12" height="12" rx="3" fill="#0066CC"/>
+    <rect x="26" y="68" width="54" height="12" rx="6" fill="#0066CC" opacity="0.35"/>
+  </g>
+
+  <!-- Wordmark: monospace, the vernacular of HTTP headers -->
+  <text x="118" y="50"
+        font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace"
+        font-size="26" font-weight="600" fill="#0066CC">Pdnd<tspan fill="#8794A3">.</tspan>Metadata</text>
+  <text x="120" y="72"
+        font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace"
+        font-size="12" fill="#8794A3" letter-spacing="1.2">PDND REQUEST METADATA</text>
+</svg>

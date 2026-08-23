@@ -30,9 +30,9 @@ public static class JwtDecoder
 
         var segments = token.Split('.');
 
-        // JWS has 3 segments, JWE has 5 segments
-        // We require at least 2 segments.
-        if (segments.Length < 2 || segments.Length > 5)
+        // Valid compact serializations are: 2 segments (unsecured JWT), 3 (JWS), 5 (JWE).
+        // 4 segments is neither, so it is rejected rather than partially decoded.
+        if (segments.Length is not (2 or 3 or 5))
             return false;
 
         if (!TryBase64UrlDecodeToUtf8(segments[0], out var headerJson))
@@ -63,6 +63,11 @@ public static class JwtDecoder
         return true;
     }
 
+    // The shared Encoding.UTF8 instance substitutes U+FFFD instead of throwing, which turns
+    // malformed input into a mangled string that only fails later, during JSON parsing.
+    // This instance rejects it at the point where the problem actually is.
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
     private static bool TryBase64UrlDecodeToUtf8(string base64Url, out string utf8)
     {
         utf8 = string.Empty;
@@ -75,10 +80,10 @@ public static class JwtDecoder
 
         try
         {
-            utf8 = Encoding.UTF8.GetString(bytes);
+            utf8 = StrictUtf8.GetString(bytes);
             return true;
         }
-        catch
+        catch (DecoderFallbackException)
         {
             return false;
         }
@@ -90,6 +95,20 @@ public static class JwtDecoder
 
         if (string.IsNullOrEmpty(input))
             return false;
+
+        // Reject anything outside the Base64Url alphabet before translating. Convert.FromBase64String
+        // tolerates embedded whitespace and standard-Base64 '+' and '/', which would let
+        // non-Base64Url input decode successfully.
+        foreach (var c in input)
+        {
+            var isAllowed = c is >= 'A' and <= 'Z'
+                or >= 'a' and <= 'z'
+                or >= '0' and <= '9'
+                or '-' or '_';
+
+            if (!isAllowed)
+                return false;
+        }
 
         // Convert Base64Url to standard Base64
         var s = input.Replace('-', '+').Replace('_', '/');
