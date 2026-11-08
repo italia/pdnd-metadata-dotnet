@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using FluentAssertions;
 using Pdnd.Metadata.Extraction;
@@ -56,6 +56,69 @@ public class PdndVoucherClaimsExtractorTests
         md.GetFirstValue(PdndMetadataKeys.PdndVoucherClientIdUnderscore).Should().Be("c2");
         md.GetFirstValue(PdndMetadataKeys.PdndVoucherOrganizationId).Should().Be("org-1");
         md.GetFirstValue(PdndMetadataKeys.PdndVoucherDnonce).Should().Be("nonce-abc");
+    }
+
+    [Fact]
+    public void Extract_ShouldAddDigestClaim_WhenPresent()
+    {
+        var md = new PdndCallerMetadata();
+        var jwt = new JwtParts(
+            HeaderJson: "{\"alg\":\"RS256\"}",
+            PayloadJson: "{\"purposeId\":\"p1\",\"digest\":{\"alg\":\"SHA256\",\"value\":\"abc123\"}}",
+            SignatureBase64Url: null);
+
+        PdndVoucherClaimsExtractor.Extract(md, jwt);
+
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherDigestAlg).Should().Be("SHA256");
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherDigestValue).Should().Be("abc123");
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId).Should().Be("p1");
+    }
+
+    [Theory]
+    [InlineData("{\"digest\":\"SHA256=abc\"}")]
+    [InlineData("{\"digest\":[\"SHA256\",\"abc\"]}")]
+    [InlineData("{\"digest\":null}")]
+    [InlineData("{\"digest\":{}}")]
+    [InlineData("{\"digest\":{\"alg\":\"\",\"value\":\"\"}}")]
+    public void Extract_ShouldIgnoreDigestClaim_WhenMalformed(string payload)
+    {
+        var md = new PdndCallerMetadata();
+        var jwt = new JwtParts("{}", payload, null);
+
+        var act = () => PdndVoucherClaimsExtractor.Extract(md, jwt);
+
+        act.Should().NotThrow();
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherDigestAlg).Should().BeNull();
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherDigestValue).Should().BeNull();
+    }
+
+    [Fact]
+    public void Extract_ShouldAddPartialDigest_WhenOnlyAlgIsPresent()
+    {
+        var md = new PdndCallerMetadata();
+        var jwt = new JwtParts("{}", "{\"digest\":{\"alg\":\"SHA256\"}}", null);
+
+        PdndVoucherClaimsExtractor.Extract(md, jwt);
+
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherDigestAlg).Should().Be("SHA256");
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherDigestValue).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("[{\"purposeId\":\"p1\"}]")]
+    [InlineData("\"text\"")]
+    [InlineData("42")]
+    public void Extract_ShouldNotThrow_WhenPayloadRootIsNotObject(string payload)
+    {
+        var md = new PdndCallerMetadata();
+        var jwt = new JwtParts("{\"alg\":\"RS256\"}", payload, null);
+
+        var act = () => PdndVoucherClaimsExtractor.Extract(md, jwt);
+
+        act.Should().NotThrow();
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherAlg).Should().Be("RS256");
+        md.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId).Should().BeNull();
     }
 
     [Fact]

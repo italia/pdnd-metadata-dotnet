@@ -272,8 +272,12 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                         var val = token.Substring(4).Trim().Trim('"');
 
                         // Remove IPv6 brackets if present (RFC 7239 §4)
-                        if (val.Length >= 2 && val[0] == '[' && val[val.Length - 1] == ']')
-                            val = val.Substring(1, val.Length - 2);
+                        if (val.Length >= 2 && val[0] == '[')
+                        {
+                            var close = val.IndexOf(']');
+                            if (close > 1)
+                                val = val.Substring(1, close - 1);
+                        }
 
                         if (!string.IsNullOrWhiteSpace(val))
                             chain.Add(val);

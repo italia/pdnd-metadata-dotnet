@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using System.Text.Json;
 
@@ -16,7 +16,7 @@ public static class JwtJsonReader
     {
         value = null;
 
-        if (!root.TryGetProperty(name, out var prop))
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out var prop))
             return false;
 
         if (prop.ValueKind == JsonValueKind.String)
@@ -56,7 +56,7 @@ public static class JwtJsonReader
     {
         pairs = Array.Empty<KeyValuePair<string, string>>();
 
-        if (!root.TryGetProperty("signed_headers", out var claim))
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("signed_headers", out var claim))
             return false;
 
         var result = new List<KeyValuePair<string, string>>();
@@ -121,7 +121,7 @@ public static class JwtJsonReader
     {
         value = null;
 
-        if (!root.TryGetProperty("aud", out var aud))
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("aud", out var aud))
             return false;
 
         if (aud.ValueKind == JsonValueKind.String)

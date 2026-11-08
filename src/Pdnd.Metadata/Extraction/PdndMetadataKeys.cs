@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 namespace Pdnd.Metadata.Extraction;
 
@@ -110,6 +110,12 @@ public static class PdndMetadataKeys
 
     /// <summary>Voucher dnonce claim (anti-replay nonce, if present).</summary>
     public const string PdndVoucherDnonce = "pdnd.voucher.dnonce";
+
+    /// <summary>Voucher digest.alg claim (hash algorithm of the tracking evidence, if present).</summary>
+    public const string PdndVoucherDigestAlg = "pdnd.voucher.digest.alg";
+
+    /// <summary>Voucher digest.value claim (hash of the Agid-JWT-TrackingEvidence, if present).</summary>
+    public const string PdndVoucherDigestValue = "pdnd.voucher.digest.value";
 
     /// <summary>Tracking evidence JWS/JWT header alg.</summary>
     public const string PdndTrackingAlg = "pdnd.trackingEvidence.alg";

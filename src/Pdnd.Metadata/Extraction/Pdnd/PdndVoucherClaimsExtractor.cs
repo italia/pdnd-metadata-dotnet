@@ -1,4 +1,4 @@
-﻿// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
+// (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using System.Text.Json;
 using Pdnd.Metadata.Extraction.Jwt;
@@ -51,6 +51,14 @@ public static class PdndVoucherClaimsExtractor
                 AddIfPresent(metadata, root, "client_id", PdndMetadataKeys.PdndVoucherClientIdUnderscore);
                 AddIfPresent(metadata, root, "organizationId", PdndMetadataKeys.PdndVoucherOrganizationId);
                 AddIfPresent(metadata, root, "dnonce", PdndMetadataKeys.PdndVoucherDnonce);
+
+                if (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("digest", out var digest)
+                    && digest.ValueKind == JsonValueKind.Object)
+                {
+                    AddIfPresent(metadata, digest, "alg", PdndMetadataKeys.PdndVoucherDigestAlg);
+                    AddIfPresent(metadata, digest, "value", PdndMetadataKeys.PdndVoucherDigestValue);
+                }
             }
         }
         catch

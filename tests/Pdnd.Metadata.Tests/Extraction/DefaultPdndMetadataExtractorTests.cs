@@ -201,6 +201,43 @@ public class DefaultPdndMetadataExtractorTests
         md.GetFirstValue(PdndMetadataKeys.NetForwardedFor).Should().Be("2001:db8:cafe::17, ::ffff:192.0.2.1");
     }
 
+    [Theory]
+    [InlineData("for=\"[2001:db8:cafe::17]:4711\"", "2001:db8:cafe::17")]
+    [InlineData("for=\"[::1]:8080\";proto=https", "::1")]
+    [InlineData("for=\"[2001:db8::1]:4711\", for=192.0.2.43", "2001:db8::1, 192.0.2.43")]
+    public void Extract_ShouldStripBracketsAndPort_ForIPv6InForwardedHeader(string forwarded, string expected)
+    {
+        var ctx = new PdndRequestContext
+        {
+            Method = "GET",
+            Headers = new[]
+            {
+                new PdndRequestHeader("Forwarded", new[] { forwarded })
+            }
+        };
+
+        var md = new DefaultPdndMetadataExtractor().Extract(ctx, new PdndMetadataOptions { NormalizeForwardedHeaders = true });
+
+        md.GetFirstValue(PdndMetadataKeys.NetForwardedFor).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Extract_ShouldKeepIPv4WithPort_InForwardedHeaderUnchanged()
+    {
+        var ctx = new PdndRequestContext
+        {
+            Method = "GET",
+            Headers = new[]
+            {
+                new PdndRequestHeader("Forwarded", new[] { "for=\"192.0.2.43:4711\"" })
+            }
+        };
+
+        var md = new DefaultPdndMetadataExtractor().Extract(ctx, new PdndMetadataOptions { NormalizeForwardedHeaders = true });
+
+        md.GetFirstValue(PdndMetadataKeys.NetForwardedFor).Should().Be("192.0.2.43:4711");
+    }
+
     [Fact]
     public void Extract_ShouldHandleMixedIPv4AndIPv6InForwardedHeader()
     {
