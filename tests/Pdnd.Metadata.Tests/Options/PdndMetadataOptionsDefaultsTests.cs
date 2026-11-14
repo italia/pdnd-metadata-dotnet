@@ -90,6 +90,40 @@ public sealed class PdndMetadataOptionsDefaultsTests
     }
 
     [Fact]
+    public void Extract_AtMaxHeaderCount_FollowedOnlyByFilteredHeaders_DoesNotMarkTruncation()
+    {
+        // The bound is reached exactly, and every header after it would have been skipped anyway:
+        // a denied credential, a non-allow-listed header, and a signed blob. Nothing was dropped
+        // because of the bound, so the snapshot is complete and must not claim otherwise.
+        var options = new PdndMetadataOptions { MaxHeaderCount = 1 };
+
+        var md = Extract(options,
+            ("User-Agent", "agent"),
+            ("Authorization", "Bearer x"),
+            ("X-Not-Allow-Listed", "value"),
+            ("DPoP", "proof"));
+
+        md.GetFirstValue(PdndMetadataKeys.HeaderPrefix + "user-agent").Should().Be("agent");
+        md.GetFirstValue(PdndMetadataKeys.MetadataTruncated).Should().BeNull();
+    }
+
+    [Fact]
+    public void Extract_AtMaxHeaderCount_FollowedByACapturableHeader_MarksTruncationOnce()
+    {
+        var options = new PdndMetadataOptions { MaxHeaderCount = 1 };
+
+        var md = Extract(options,
+            ("User-Agent", "agent"),
+            ("Authorization", "Bearer x"),
+            ("X-Request-Id", "req-1"),
+            ("X-Correlation-Id", "corr-1"));
+
+        md.GetFirstValue(PdndMetadataKeys.HeaderPrefix + "user-agent").Should().Be("agent");
+        md.GetFirstValue(PdndMetadataKeys.HeaderPrefix + "x-request-id").Should().BeNull();
+        md.GetValues(PdndMetadataKeys.MetadataTruncated).Should().Equal("headers");
+    }
+
+    [Fact]
     public void MaxHeaderCount_BelowOne_Throws()
     {
         var act = () => new PdndMetadataOptions { MaxHeaderCount = 0 };

@@ -100,7 +100,8 @@ def architecture(c: dict) -> str:
     W, H = 960, 448
     s = [head(W, H, "Where Pdnd.Metadata sits",
               "The library runs as ASP.NET Core middleware inside the provider service, after the "
-              "reverse proxy and before validation, and never participates in the trust decision.", c)]
+              "reverse proxy and authentication and before the authorization decision, and never "
+              "participates in the trust decision.", c)]
 
     # PDND platform, upstream and out of scope
     s += [panel(32, 56, 176, 72, c, "sunken", "rule", dashed=True),
@@ -138,7 +139,7 @@ def architecture(c: dict) -> str:
           caption(496, 222, "extract, normalize", c, col="accent")]
 
     s += [panel(592, 180, 144, 64, c, "sunken", "rule", r=6, dashed=True),
-          title(664, 202, "Validation", c),
+          title(664, 202, "Authorization", c),
           caption(664, 222, "not in this library", c, col="flag")]
 
     s += [panel(760, 180, 144, 64, c, "sunken", "rule", r=6),
@@ -156,7 +157,8 @@ def architecture(c: dict) -> str:
     s.append(caption(592, 302, "Activity tags and a request counter,", c, anchor="start", size=10))
     s.append(caption(592, 320, "read by any OpenTelemetry exporter", c, anchor="start", size=10))
 
-    s.append(flow(496, 248, 496, 280, c, dashed=True))
+    # Diagnostics is part of this project and runs in the request path, so the arrow is solid.
+    s.append(flow(496, 248, 496, 280, c))
 
     # Legend
     s.append(rule(32, 376, 928, c))
@@ -169,7 +171,7 @@ def architecture(c: dict) -> str:
         lx += 38 + int(len(label) * 5.4) + 40
 
     s.append(caption(32, 428, "The library never rejects a request and never verifies a signature. "
-                              "It runs before validation so the snapshot is available to it.",
+                              "It runs after authentication and before the authorization decision.",
                      c, col="faint", anchor="start", size=10))
     s.append("</svg>")
     return "".join(s)
@@ -184,7 +186,7 @@ def pipeline(c: dict) -> str:
 
     s.append(eyebrow(32, 40, "inbound headers", c))
     s.append(panel(32, 56, 216, 264, c, "sunken"))
-    rows = ["Authorization", "Agid-JWT-Signature", "Agid-JWT-Tracking-Evidence",
+    rows = ["Authorization", "Agid-JWT-Signature", "Agid-JWT-TrackingEvidence",
             "DPoP", "Digest / Content-Digest"]
     for i, r in enumerate(rows):
         y = 76 + i * 48
@@ -208,7 +210,7 @@ def pipeline(c: dict) -> str:
 
     s.append(eyebrow(600, 40, "canonical snapshot", c))
     s.append(panel(600, 56, 264, 264, c, "sunken"))
-    keys = [("pdnd.voucher.organizationId", "org-001"),
+    keys = [("pdnd.voucher.consumerId", "consumer-001"),
             ("pdnd.voucher.purposeId", "purpose-001"),
             ("pdnd.signature.signed_headers", "digest, content-type"),
             ("pdnd.dpop.htm", "POST"),
@@ -239,7 +241,7 @@ def keyspace(c: dict) -> str:
 
     groups = [
         ("transport", [("http.*", "method, scheme, host, path, query"),
-                       ("net.*", "addresses and ports")]),
+                       ("net.*", "addresses, ports, forwarded chain")]),
         ("correlation", [("trace.*", "W3C Trace Context"),
                          ("correlation.id", "request identifier")]),
         ("pdnd tokens", [("pdnd.voucher.*", "voucher claims"),
@@ -265,7 +267,8 @@ def keyspace(c: dict) -> str:
 
     s.append(eyebrow(32, 32, "canonical key namespace", c, col="muted"))
     s.append(rule(32, 336, 928, c))
-    s.append(caption(32, 360, "Keys are lowercase and hierarchical. An absent claim produces no key, "
+    s.append(caption(32, 360, "Keys are hierarchical and dot-separated, and lookups ignore case. "
+                              "An absent claim produces no key, "
                               "so absence and emptiness are indistinguishable by design.",
                      c, col="faint", anchor="start", size=10))
     s.append(caption(32, 378, "The single exception is metadata.truncated, emitted when header "
@@ -284,15 +287,15 @@ def conformance(c: dict) -> str:
 
     s.append(eyebrow(336, 48, "the contract", c, col="accent"))
     s.append(panel(336, 64, 288, 88, c, "accentFill", "accentLine"))
-    s.append(title(480, 92, "Specification 1.1.0", c, col="accent"))
-    s.append(caption(480, 116, "canonical vocabulary · 30 vectors", c, col="accent", size=10))
+    s.append(title(480, 92, "Specification 1.2.0", c, col="accent"))
+    s.append(caption(480, 116, "canonical vocabulary · 32 vectors", c, col="accent", size=10))
 
     for x in (152, 480, 808):
         s.append(flow(480, 160, x, 208, c))
 
     impls = [
-        (72, "Pdnd.Metadata", "C# .NET", "30 / 30", True),
-        (400, "reference", "Python", "30 / 30", True),
+        (72, "Pdnd.Metadata", "C# .NET", "32 / 32", True),
+        (400, "reference", "Python", "32 / 32", True),
         (728, "your implementation", "any language", "run the corpus", False),
     ]
     for x, name, lang, result, ok in impls:

@@ -74,8 +74,10 @@ public sealed class PdndMetadataOptions
 
     /// <summary>
     /// Gets or sets the maximum number of distinct header names to capture.
-    /// Once reached, header capture stops and <see cref="Extraction.PdndMetadataKeys.MetadataTruncated"/>
-    /// is emitted so that truncation is distinguishable from absence.
+    /// Once reached, header capture stops; if a further header would have been captured,
+    /// <see cref="Extraction.PdndMetadataKeys.MetadataTruncated"/> is emitted so that truncation
+    /// is distinguishable from absence. Headers skipped by the allow, deny, or raw-capture rules
+    /// never count as truncated.
     /// Must be at least 1.
     /// </summary>
     /// <remarks>
@@ -139,9 +141,10 @@ public sealed class PdndMetadataOptions
     public bool NormalizeForwardedHeaders { get; set; } = true;
 
     /// <summary>
-    /// Gets or sets whether the library should parse the Authorization Bearer token as a JWT
-    /// and extract PDND voucher fields (best-effort, no signature validation).
-    /// Raw Authorization header is never stored.
+    /// Gets or sets whether the library should parse the voucher carried in the Authorization
+    /// header as a JWT and extract PDND voucher fields (best-effort, no signature validation).
+    /// Both the <c>Bearer</c> scheme and the <c>DPoP</c> scheme (DPoP-bound voucher, RFC 9449)
+    /// are recognised. Raw Authorization header is never stored.
     /// </summary>
     public bool ParsePdndVoucherFromAuthorizationBearer { get; set; } = true;
 
@@ -200,7 +203,8 @@ public sealed class PdndMetadataOptions
 
     /// <summary>
     /// Gets the request path prefixes for which extraction is skipped entirely.
-    /// Comparisons are case-insensitive and prefix-based.
+    /// Comparisons are case-insensitive and match whole path segments: <c>/health</c> excludes
+    /// <c>/health</c> and <c>/health/ready</c>, but not <c>/healthcare</c>.
     /// </summary>
     /// <remarks>
     /// Health probes, metrics scrapes, and static files pay the full extraction cost and produce
@@ -220,14 +224,30 @@ public sealed class PdndMetadataOptions
 
         for (var i = 0; i < PathExclusions.Count; i++)
         {
-            var prefix = PathExclusions[i];
-            if (!string.IsNullOrEmpty(prefix) &&
-                path!.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            {
+            if (MatchesSegmentPrefix(path!, PathExclusions[i]))
                 return true;
-            }
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Segment-aware prefix match: <c>/health</c> matches <c>/health</c> and <c>/health/live</c>
+    /// but not <c>/healthcare</c>, mirroring <c>PathString.StartsWithSegments</c>.
+    /// </summary>
+    private static bool MatchesSegmentPrefix(string path, string? prefix)
+    {
+        if (string.IsNullOrEmpty(prefix))
+            return false;
+
+        // A trailing slash on the prefix carries no meaning: "/health/" behaves as "/health".
+        var trimmed = prefix.Length > 1 ? prefix.TrimEnd('/') : prefix;
+        if (trimmed.Length == 0 || trimmed == "/")
+            return path.StartsWith('/');
+
+        if (!path.StartsWith(trimmed, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return path.Length == trimmed.Length || path[trimmed.Length] == '/';
     }
 }

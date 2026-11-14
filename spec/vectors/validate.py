@@ -71,7 +71,8 @@ def main() -> int:
                 continue
 
             for value in values:
-                token = value[len("Bearer "):] if value.lower().startswith("bearer ") else value
+                scheme, _, rest = value.partition(" ")
+                token = rest.strip() if scheme.lower() in ("bearer", "dpop") and rest.strip() else value
                 if token.count(".") not in (1, 2, 4):
                     continue
 

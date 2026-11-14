@@ -22,7 +22,7 @@ from typing import Any
 
 __all__ = ["extract", "SPEC_VERSION"]
 
-SPEC_VERSION = "1.0.0"
+SPEC_VERSION = "1.2.0"
 
 MAX_TOKEN_LENGTH = 16384
 
@@ -40,8 +40,12 @@ _PAYLOAD_CLAIMS: dict[str, tuple[str, ...]] = {
     "pdnd.voucher": (
         "iss", "sub", "aud", "jti", "iat", "nbf", "exp",
         "purposeId", "clientId", "client_id", "organizationId", "dnonce",
+        "consumerId", "producerId", "eserviceId", "descriptorId",
     ),
-    "pdnd.trackingEvidence": ("iss", "sub", "jti", "aud", "iat", "nbf", "exp"),
+    "pdnd.trackingEvidence": (
+        "iss", "sub", "jti", "aud", "iat", "nbf", "exp",
+        "userID", "userLocation", "LoA", "purposeId", "dnonce",
+    ),
     "pdnd.dpop": ("htm", "htu", "jti", "iat", "exp", "ath", "nonce"),
     "pdnd.signature": ("iss", "sub", "jti", "aud", "iat", "exp"),
 }
@@ -222,6 +226,13 @@ def extract(headers: Mapping[str, str | Sequence[str]]) -> dict[str, str]:
             elif claim in payload:
                 emit(f"{prefix}.{claim}", _scalar(payload[claim]))
 
+        if prefix == "pdnd.voucher":
+            # Nested objects: the AUDIT_REST_02 digest and the DPoP key confirmation.
+            for parent, child in (("digest", "alg"), ("digest", "value"), ("cnf", "jkt")):
+                container = payload.get(parent)
+                if isinstance(container, dict):
+                    emit(f"pdnd.voucher.{parent}.{child}", _scalar(container.get(child)))
+
         if prefix == "pdnd.signature":
             pairs = _signed_headers(payload.get("signed_headers"))
             if pairs:
@@ -233,7 +244,8 @@ def extract(headers: Mapping[str, str | Sequence[str]]) -> dict[str, str]:
     authorization = lookup.get("authorization")
     if authorization:
         scheme, _, rest = authorization.partition(" ")
-        if scheme.lower() == "bearer" and rest.strip():
+        # A DPoP-bound voucher uses the DPoP scheme (RFC 9449 section 7.1) instead of Bearer.
+        if scheme.lower() in ("bearer", "dpop") and rest.strip():
             emit_token("pdnd.voucher", rest.strip())
 
     for names, prefix in _TOKEN_HEADERS:

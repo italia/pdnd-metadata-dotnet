@@ -52,6 +52,20 @@ public static class PdndVoucherClaimsExtractor
                 AddIfPresent(metadata, root, "organizationId", PdndMetadataKeys.PdndVoucherOrganizationId);
                 AddIfPresent(metadata, root, "dnonce", PdndMetadataKeys.PdndVoucherDnonce);
 
+                // Identity of the parties and of the e-service version, as issued by PDND.
+                AddIfPresent(metadata, root, "consumerId", PdndMetadataKeys.PdndVoucherConsumerId);
+                AddIfPresent(metadata, root, "producerId", PdndMetadataKeys.PdndVoucherProducerId);
+                AddIfPresent(metadata, root, "eserviceId", PdndMetadataKeys.PdndVoucherEserviceId);
+                AddIfPresent(metadata, root, "descriptorId", PdndMetadataKeys.PdndVoucherDescriptorId);
+
+                // DPoP-bound vouchers carry the thumbprint of the bound key (RFC 9449 §6.1).
+                if (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("cnf", out var cnf)
+                    && cnf.ValueKind == JsonValueKind.Object)
+                {
+                    AddIfPresent(metadata, cnf, "jkt", PdndMetadataKeys.PdndVoucherCnfJkt);
+                }
+
                 if (root.ValueKind == JsonValueKind.Object
                     && root.TryGetProperty("digest", out var digest)
                     && digest.ValueKind == JsonValueKind.Object)

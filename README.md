@@ -16,6 +16,8 @@
   <a href="https://www.nuget.org/packages/Pdnd.Metadata"><img alt="NuGet" src="https://img.shields.io/nuget/v/Pdnd.Metadata?style=flat-square"></a>
   <a href="https://www.nuget.org/packages/Pdnd.Metadata"><img alt="Download" src="https://img.shields.io/nuget/dt/Pdnd.Metadata?style=flat-square"></a>
   <a href="https://github.com/italia/pdnd-metadata-dotnet/issues"><img alt="Issue" src="https://img.shields.io/github/issues/italia/pdnd-metadata-dotnet?style=flat-square"></a>
+  <a href="https://github.com/italia/pdnd-metadata-dotnet/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/italia/pdnd-metadata-dotnet/codeql.yml?branch=main&label=CodeQL&style=flat-square"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/italia/pdnd-metadata-dotnet"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/italia/pdnd-metadata-dotnet?label=OpenSSF%20Scorecard&style=flat-square"></a>
   <a href="README.EN.md"><img alt="English" src="https://img.shields.io/badge/lang-en-blue"></a>
 </p>
 
@@ -39,7 +41,8 @@ stessa amministrazione registrino lo stesso fatto sotto lo stesso nome.
   </picture>
 </p>
 
-Il middleware gira dentro il servizio erogatore, dopo il reverse proxy e prima della validazione.
+Il middleware gira dentro il servizio erogatore, dopo il reverse proxy e l'autenticazione e prima
+della decisione di autorizzazione.
 Non partecipa alla decisione di fiducia, e non respinge mai una richiesta.
 
 ## In pratica
@@ -47,9 +50,10 @@ Non partecipa alla decisione di fiducia, e non respinge mai una richiesta.
 ```csharp
 var md = accessor.Current;
 
-md.GetFirstValue(PdndMetadataKeys.PdndVoucherOrganizationId);  // "org-001"
-md.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId);       // "purpose-001"
-md.GetFirstValue(PdndMetadataKeys.CorrelationId);              // "b7c1..."
+md.GetFirstValue(PdndMetadataKeys.PdndVoucherConsumerId);   // "69e2865e-..." ente fruitore
+md.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId);    // "1b361d49-..." finalità
+md.GetFirstValue(PdndMetadataKeys.PdndVoucherEserviceId);   // "b8c6d7ad-..." e-service
+md.GetFirstValue(PdndMetadataKeys.CorrelationId);           // "b7c1..."
 ```
 
 ## Confini
@@ -65,7 +69,8 @@ La libreria estrae e normalizza. Non verifica.
 
 | Fa | Non fa |
 | --- | --- |
-| Decodifica voucher, tracking evidence, e prove DPoP | Verifica delle firme JWS |
+| Decodifica voucher (`Bearer` e `DPoP`), tracking evidence, e prove DPoP | Verifica delle firme JWS |
+| Riporta `cnf.jkt` del voucher e `ath` della prova | Verifica del legame tra voucher e prova DPoP |
 | Normalizza `Digest` e `Content-Digest` | Confronto del digest con il corpo effettivo |
 | Legge i claim di `Agid-JWT-Signature` | Controllo di corrispondenza degli header firmati |
 | Promuove correlazione e tracing | Rilevamento di replay o di scadenza |
@@ -106,10 +111,15 @@ builder.Services.AddPdndMetadata(options =>
 });
 ```
 
-Middleware, prima del mapping degli endpoint.
+Middleware, prima del mapping degli endpoint. L'ordine conta in due punti: dopo
+`UseAuthentication()`, altrimenti le chiavi `claim.*` restano vuote; e, se si usa
+`UseForwardedHeaders()`, tenendo presente che quel middleware consuma `X-Forwarded-For` e lo
+sposta in `X-Original-For`, per cui `net.forwarded_for` riflette ciò che resta.
 
 ```csharp
+app.UseAuthentication();
 app.UsePdndMetadata();
+app.UseAuthorization();
 ```
 
 Lettura in un controller.
@@ -122,7 +132,7 @@ public IActionResult Get([FromServices] IPdndMetadataAccessor accessor)
 
     return Ok(new
     {
-        organization = md?.GetFirstValue(PdndMetadataKeys.PdndVoucherOrganizationId),
+        consumer = md?.GetFirstValue(PdndMetadataKeys.PdndVoucherConsumerId),
         purpose = md?.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId)
     });
 }
@@ -154,9 +164,9 @@ Le chiavi seguono uno schema gerarchico. Questi sono i prefissi.
 | --- | --- |
 | `http.*`, `net.*` | Metodo, schema, host, path, indirizzi, e porte |
 | `trace.*`, `correlation.id` | W3C Trace Context e identificativi di richiesta |
-| `pdnd.voucher.*` | Claim del voucher, inclusi `purposeId` e `organizationId` |
-| `pdnd.trackingEvidence.*` | Claim del token di tracking evidence |
-| `pdnd.dpop.*` | Prova DPoP, inclusi `ath` e `nonce` |
+| `pdnd.voucher.*` | Claim del voucher: `client_id`, `purposeId`, `consumerId`, `producerId`, `eserviceId`, `descriptorId`, `cnf.jkt`, `digest` |
+| `pdnd.trackingEvidence.*` | Claim di `Agid-JWT-TrackingEvidence`, inclusi i dati di audit `userID`, `userLocation`, `LoA` |
+| `pdnd.dpop.*` | Prova DPoP, inclusi `htm`, `htu` e `ath` |
 | `pdnd.digest.*`, `pdnd.content_digest.*` | Digest del corpo, formato legacy e RFC 9530 |
 | `pdnd.signature.*` | Claim di `Agid-JWT-Signature`, inclusi gli header firmati |
 | `http.header.*` | Header grezzi, quando la cattura è abilitata |
@@ -171,6 +181,12 @@ Le chiavi seguono uno schema gerarchico. Questi sono i prefissi.
 
 L'elenco completo, con il claim di origine di ogni chiave, si trova in
 [`spec/PDND_METADATA_SCHEMA.md`](spec/PDND_METADATA_SCHEMA.md).
+
+I nomi dei claim seguono gli esempi del manuale operativo PDND. I voucher attuali identificano
+l'ente fruitore con `consumerId`; `pdnd.voucher.organizationId` resta disponibile per i token che
+ancora lo portano, ma non va usato come identità del chiamante. Allo stesso modo il nome
+dell'header della tracking evidence è `Agid-JWT-TrackingEvidence`; la grafia con il trattino
+`Agid-JWT-Tracking-Evidence` è accettata solo per compatibilità.
 
 ## Sicurezza
 
@@ -201,19 +217,37 @@ segnale di identità.
 
 `Pdnd.Metadata.Diagnostics` proietta lo snapshot sui tag dell'attività corrente e su un contatore
 di richieste. Non dipende da alcun pacchetto OpenTelemetry: usa `Activity` e `Meter` della libreria
-di base, che l'SDK consuma sottoscrivendo i nomi delle sorgenti.
+di base, che l'SDK consuma sottoscrivendo il meter.
+
+I tag vengono scritti sull'`Activity` corrente, cioè quella della richiesta creata da ASP.NET
+Core: per vederli nelle tracce serve la strumentazione ASP.NET Core di OpenTelemetry. La libreria
+non crea un'`ActivitySource` propria, quindi `AddSource(PdndInstrumentation.ActivitySourceName)`
+non è necessario.
 
 ```csharp
 builder.Services.AddOpenTelemetry()
-    .WithTracing(t => t.AddSource(PdndInstrumentation.ActivitySourceName))
+    .WithTracing(t => t.AddAspNetCoreInstrumentation())
     .WithMetrics(m => m.AddMeter(PdndInstrumentation.MeterName));
 
 app.UsePdndMetadata();
 app.UsePdndDiagnostics();
 ```
 
-Le dimensioni del contatore sono limitate a tre claim a bassa cardinalità. Identificativi come
-`jti` restano tag di traccia e non diventano dimensioni di metrica.
+Le dimensioni del contatore `pdnd.requests` sono limitate a tre claim a bassa cardinalità:
+`consumerId` (con ripiego su `organizationId` per i token legacy), `purposeId` e `client_id`.
+Identificativi come `jti` restano tag di traccia e non diventano dimensioni di metrica.
+
+Quei claim provengono da un voucher non ancora verificato, quindi chiunque può valorizzarli.
+Ogni dimensione registra al massimo `MaxDistinctValuesPerDimension` valori distinti (predefinito
+`100`); i successivi confluiscono in `other`. Le dimensioni si possono anche disattivare.
+
+```csharp
+builder.Services.AddPdndDiagnostics(o =>
+{
+    o.MaxDistinctValuesPerDimension = 500;
+    // o.IncludeConsumerDimensions = false;
+});
+```
 
 ## Specifica e vettori di conformità
 
@@ -249,20 +283,34 @@ e `alg: none`.
 | `MaxHeaderValuesPerName` | `10` | Valori massimi per nome di header |
 | `MaxValueLength` | `2048` | Lunghezza massima di un valore, oltre la quale viene troncato |
 | `MaxTokenLength` | `16384` | Lunghezza massima di un token da decodificare |
-| `PathExclusions` | vuoto | Prefissi di path per cui l'estrazione viene saltata |
-| `CaptureRaw*` | `false` | Cattura dei blob firmati grezzi, sconsigliata in produzione |
+| `PathExclusions` | vuoto | Path esclusi dall'estrazione, confrontati per segmento: `/health` non esclude `/healthcare` |
+| `CaptureRawTrackingEvidenceHeader`, `CaptureRawDpopHeader`, `CaptureRawSignatureHeader` | `false` | Cattura dei blob firmati grezzi, sconsigliata in produzione |
+| `CaptureRawDigestHeader` | `true` | Cattura grezza di `Digest` e `Content-Digest`, che non sono credenziali |
+
+Le opzioni di `Pdnd.Metadata.Diagnostics` si registrano con `AddPdndDiagnostics()`.
+
+| Opzione | Predefinito | Effetto |
+| --- | --- | --- |
+| `IncludeConsumerDimensions` | `true` | Dimensiona il contatore per consumer, finalità e client |
+| `MaxDistinctValuesPerDimension` | `100` | Valori distinti per dimensione; i successivi diventano `other` |
 
 ## Compatibilità
 
 La versione 2.0.0 introduce due modifiche non compatibili. `CaptureAllHeaders` passa a `false`, e
 la proprietà `Items` è sostituita dal metodo `Snapshot()`, mantenuta come obsoleta fino alla 3.0.0.
-Il dettaglio è nel [changelog](CHANGELOG.md).
+
+Nella versione 2.1.0 la dimensione del contatore `pdnd.requests` che identifica l'ente fruitore
+si chiama `pdnd.voucher.consumerId` invece di `pdnd.voucher.organizationId`: i voucher PDND attuali
+non portano `organizationId`, quindi la vecchia dimensione valeva sempre `unknown`. Le dashboard
+che la usano vanno aggiornate. Il dettaglio è nel [changelog](CHANGELOG.md).
 
 ## Documentazione ufficiale PDND
 
 - [Guide PDND Interoperabilità](https://developer.pagopa.it/pdnd-interoperabilita/guides)
 - [Utilizzo dei voucher](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher)
 - [Approfondimento su DPoP](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/riferimenti-tecnici/utilizzare-i-voucher/approfondimento-su-dpop)
+- [Verificare un voucher DPoP (erogatore)](https://developer.pagopa.it/it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/v1.0/tutorial/tutorial-per-lerogatore/come-verificare-la-validita-di-un-voucher-dpop)
+- [Voucher con informazioni aggiuntive (AUDIT_REST_02)](https://developer.pagopa.it/it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/v1.0/tutorial/tutorial-per-il-fruitore/come-richiedere-un-voucher-bearer-per-le-api-di-un-erogatore-con-informazioni-aggiuntive)
 - [Manuale operativo tracing](https://developer.pagopa.it/pdnd-interoperabilita/guides/manuale-operativo-tracing)
 - [Linee Guida AgID sull'interoperabilità tecnica](https://www.agid.gov.it/it/argomenti/interoperabilita)
 

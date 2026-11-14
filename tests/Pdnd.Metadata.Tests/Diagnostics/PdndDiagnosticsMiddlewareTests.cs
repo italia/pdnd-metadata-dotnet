@@ -89,6 +89,31 @@ public sealed class PdndDiagnosticsMiddlewareTests
     }
 
     [Fact]
+    public void Record_PromotesIdentityAndTruncation_ButNeverTheVoucherItself()
+    {
+        var metadata = new PdndCallerMetadata();
+        metadata.Add(PdndMetadataKeys.PdndVoucherConsumerId, "consumer-1", PdndMetadataSource.Claims);
+        metadata.Add(PdndMetadataKeys.PdndVoucherEserviceId, "eservice-1", PdndMetadataSource.Claims);
+        metadata.Add(PdndMetadataKeys.MetadataTruncated, "headers", PdndMetadataSource.Derived);
+        metadata.Add(PdndMetadataKeys.HttpPath, "/not-promoted", PdndMetadataSource.Derived);
+
+        var collected = new List<Activity>();
+        using var listener = CreateListener(collected);
+        ActivitySource.AddActivityListener(listener);
+
+        using var source = new ActivitySource("test");
+        using var activity = source.StartActivity("request");
+
+        PdndInstrumentation.Record(metadata);
+
+        activity!.GetTagItem(PdndMetadataKeys.PdndVoucherConsumerId).Should().Be("consumer-1");
+        activity.GetTagItem(PdndMetadataKeys.PdndVoucherEserviceId).Should().Be("eservice-1");
+        activity.GetTagItem(PdndMetadataKeys.MetadataTruncated).Should().Be("headers");
+        activity.GetTagItem(PdndMetadataKeys.HttpPath).Should().BeNull("standard HTTP attributes belong to the ASP.NET Core instrumentation");
+        activity.Tags.Should().NotContain(t => t.Key.StartsWith(PdndMetadataKeys.HeaderPrefix));
+    }
+
+    [Fact]
     public void Record_WithNullMetadata_DoesNotThrow()
     {
         var act = () => PdndInstrumentation.Record(null);

@@ -32,6 +32,31 @@ public class JwtJsonReaderTests
         JwtJsonReader.TryReadString(doc.RootElement, "iss", out _).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("true")]
+    [InlineData("null")]
+    [InlineData("{\"a\":1}")]
+    [InlineData("[\"a\"]")]
+    public void TryReadString_ShouldReturnFalse_ForNonScalarValues(string json)
+    {
+        using var doc = JsonDocument.Parse("{\"claim\":" + json + "}");
+
+        JwtJsonReader.TryReadString(doc.RootElement, "claim", out var value).Should().BeFalse();
+        value.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("\"\"")]
+    [InlineData("\"   \"")]
+    [InlineData("42")]
+    public void TryReadSignedHeaders_ShouldReturnFalse_ForEmptyOrNonStringScalars(string json)
+    {
+        using var doc = JsonDocument.Parse("{\"signed_headers\":" + json + "}");
+
+        JwtJsonReader.TryReadSignedHeaders(doc.RootElement, out var pairs).Should().BeFalse();
+        pairs.Should().BeEmpty();
+    }
+
     [Fact]
     public void TryReadAudience_ShouldReadStringAud()
     {

@@ -12,7 +12,8 @@ namespace Pdnd.Metadata.Extraction.Pdnd;
 public static class PdndTrackingEvidenceExtractor
 {
     /// <summary>
-    /// Extracts header fields (alg/kid/typ) and selected payload claims (iss/sub/jti) if present.
+    /// Extracts header fields (alg/kid/typ), registered claims, and the AUDIT_REST audit claims
+    /// (userID, userLocation, LoA, purposeId, dnonce) if present.
     /// This method is fail-soft and never throws.
     /// </summary>
     /// <param name="metadata">Target metadata snapshot.</param>
@@ -44,6 +45,15 @@ public static class PdndTrackingEvidenceExtractor
                 AddPayloadIfPresent(metadata, p, "iat", PdndMetadataKeys.PdndTrackingIat);
                 AddPayloadIfPresent(metadata, p, "nbf", PdndMetadataKeys.PdndTrackingNbf);
                 AddPayloadIfPresent(metadata, p, "exp", PdndMetadataKeys.PdndTrackingExp);
+
+                // AUDIT_REST_01/02 audit claims. The set is agreed between fruitore and
+                // erogatore: userID, userLocation and LoA are the ones the AgID guidelines
+                // suggest; purposeId and dnonce appear in published examples.
+                AddPayloadIfPresent(metadata, p, "userID", PdndMetadataKeys.PdndTrackingUserId);
+                AddPayloadIfPresent(metadata, p, "userLocation", PdndMetadataKeys.PdndTrackingUserLocation);
+                AddPayloadIfPresent(metadata, p, "LoA", PdndMetadataKeys.PdndTrackingLoA);
+                AddPayloadIfPresent(metadata, p, "purposeId", PdndMetadataKeys.PdndTrackingPurposeId);
+                AddPayloadIfPresent(metadata, p, "dnonce", PdndMetadataKeys.PdndTrackingDnonce);
             }
         }
         catch

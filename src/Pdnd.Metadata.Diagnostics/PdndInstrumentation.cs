@@ -20,18 +20,28 @@ namespace Pdnd.Metadata.Diagnostics;
 /// </remarks>
 public static class PdndInstrumentation
 {
-    /// <summary>Name of the activity source, to be passed to <c>AddSource</c>.</summary>
+    /// <summary>
+    /// Reserved name for an activity source. No <see cref="ActivitySource"/> is created under it:
+    /// tags are written to <see cref="Activity.Current"/>, the request activity created by
+    /// ASP.NET Core, so subscribing to this name has no effect today.
+    /// </summary>
     public const string ActivitySourceName = "Pdnd.Metadata";
 
     /// <summary>Name of the meter, to be passed to <c>AddMeter</c>.</summary>
     public const string MeterName = "Pdnd.Metadata";
 
+    /// <summary>Name of the request counter.</summary>
+    public const string RequestCounterName = "pdnd.requests";
+
     private static readonly Meter Meter = new(MeterName);
 
     private static readonly Counter<long> RequestCounter = Meter.CreateCounter<long>(
-        name: "pdnd.requests",
+        name: RequestCounterName,
         unit: "{request}",
         description: "Inbound requests grouped by PDND consumer identity.");
+
+    // Used by the overload without options. Its distinct-value bound is process-wide.
+    private static readonly PdndDiagnosticsOptions DefaultOptions = new();
 
     /// <summary>
     /// Canonical metadata keys promoted to activity tags.
@@ -49,7 +59,11 @@ public static class PdndInstrumentation
         PdndMetadataKeys.PdndVoucherSub,
         PdndMetadataKeys.PdndVoucherPurposeId,
         PdndMetadataKeys.PdndVoucherClientId,
+        PdndMetadataKeys.PdndVoucherClientIdUnderscore,
+        PdndMetadataKeys.PdndVoucherConsumerId,
         PdndMetadataKeys.PdndVoucherOrganizationId,
+        PdndMetadataKeys.PdndVoucherEserviceId,
+        PdndMetadataKeys.PdndVoucherDescriptorId,
         PdndMetadataKeys.PdndVoucherJti,
         PdndMetadataKeys.PdndTrackingJti,
         PdndMetadataKeys.PdndSignatureKid,
@@ -61,11 +75,25 @@ public static class PdndInstrumentation
 
     /// <summary>
     /// Writes the promoted metadata onto the current activity and records one counter
-    /// measurement dimensioned by consumer identity.
+    /// measurement dimensioned by consumer identity, using process-wide default options.
     /// </summary>
     /// <param name="metadata">Snapshot produced by the extraction pipeline. May be <c>null</c>.</param>
     public static void Record(PdndCallerMetadata? metadata)
+        => Record(metadata, DefaultOptions);
+
+    /// <summary>
+    /// Writes the promoted metadata onto the current activity and records one counter
+    /// measurement, dimensioned according to <paramref name="options"/>.
+    /// </summary>
+    /// <param name="metadata">Snapshot produced by the extraction pipeline. May be <c>null</c>.</param>
+    /// <param name="options">
+    /// Counter dimensioning options. Reuse one instance across requests: it holds the
+    /// distinct-value bound.
+    /// </param>
+    public static void Record(PdndCallerMetadata? metadata, PdndDiagnosticsOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
+
         if (metadata is null)
             return;
 
@@ -87,18 +115,38 @@ public static class PdndInstrumentation
                 activity.SetTag(PdndMetadataKeys.MetadataTruncated, truncated);
         }
 
-        // Counter dimensions are kept to three low-cardinality claims. Adding jti here would
-        // make every request a distinct time series.
+        if (!options.IncludeConsumerDimensions)
+        {
+            RequestCounter.Add(1);
+            return;
+        }
+
+        // Counter dimensions are kept to three low-cardinality claims, each bounded because the
+        // claims come from an unverified token. Adding jti here would make every request a
+        // distinct time series.
+        //
+        // PDND vouchers carry the OAuth 2.0 "client_id" claim. The camelCase form is accepted
+        // too, so the dimension falls back from one to the other.
+        var clientId = metadata.GetFirstValue(PdndMetadataKeys.PdndVoucherClientId)
+                       ?? metadata.GetFirstValue(PdndMetadataKeys.PdndVoucherClientIdUnderscore);
+
+        // Current PDND vouchers identify the fruitore with "consumerId"; "organizationId" is
+        // read only as a fallback for vouchers that still carry it.
+        var consumerId = metadata.GetFirstValue(PdndMetadataKeys.PdndVoucherConsumerId)
+                         ?? metadata.GetFirstValue(PdndMetadataKeys.PdndVoucherOrganizationId);
+
         RequestCounter.Add(
             1,
             new KeyValuePair<string, object?>(
-                PdndMetadataKeys.PdndVoucherOrganizationId,
-                metadata.GetFirstValue(PdndMetadataKeys.PdndVoucherOrganizationId) ?? "unknown"),
+                PdndMetadataKeys.PdndVoucherConsumerId,
+                options.Bound(PdndMetadataKeys.PdndVoucherConsumerId, consumerId)),
             new KeyValuePair<string, object?>(
                 PdndMetadataKeys.PdndVoucherPurposeId,
-                metadata.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId) ?? "unknown"),
+                options.Bound(
+                    PdndMetadataKeys.PdndVoucherPurposeId,
+                    metadata.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId))),
             new KeyValuePair<string, object?>(
                 PdndMetadataKeys.PdndVoucherClientId,
-                metadata.GetFirstValue(PdndMetadataKeys.PdndVoucherClientId) ?? "unknown"));
+                options.Bound(PdndMetadataKeys.PdndVoucherClientId, clientId)));
     }
 }

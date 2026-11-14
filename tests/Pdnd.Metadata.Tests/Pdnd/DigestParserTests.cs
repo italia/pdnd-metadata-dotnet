@@ -91,6 +91,14 @@ public class DigestParserTests
         val.Should().Be("abc");
     }
 
+    [Fact]
+    public void TryParseContentDigestHeader_ShouldUnquoteALegacyQuotedValue()
+    {
+        DigestParser.TryParseContentDigestHeader("sha-256=\"abc=\"", out var alg, out var val).Should().BeTrue();
+        alg.Should().Be("sha-256");
+        val.Should().Be("abc=");
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

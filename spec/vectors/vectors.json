@@ -1,6 +1,6 @@
 {
   "$schema": "./vectors.schema.json",
-  "specVersion": "1.1.0",
+  "specVersion": "1.2.0",
   "description": "Conformance vectors for PDND request metadata extraction. Each vector pairs a set of inbound HTTP headers with the canonical metadata keys an implementation is expected to produce. Keys listed under __absent__ must not be produced.",
   "license": "MIT",
   "source": "https://github.com/italia/pdnd-metadata-dotnet",
@@ -226,7 +226,7 @@
     {
       "id": "tracking-001",
       "group": "tracking-evidence",
-      "description": "Tracking evidence under the hyphenated header spelling.",
+      "description": "Tracking evidence under the hyphenated header spelling, accepted for compatibility although neither AgID nor PDND uses it.",
       "request": {
         "headers": {
           "Agid-JWT-Tracking-Evidence": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRlLWtpZCJ9.eyJpc3MiOiJmcnVpdG9yZSIsInN1YiI6ImNsaWVudC0wMDEiLCJqdGkiOiJ0ZS1qdGktMDAxIiwiaWF0IjoxNzUwMDAwMDAwLCJleHAiOjE3NTAwMDAzMDB9.c2lnbmF0dXJl"
@@ -240,7 +240,7 @@
     {
       "id": "tracking-002",
       "group": "tracking-evidence",
-      "description": "Tracking evidence under the concatenated header spelling.",
+      "description": "Tracking evidence under the concatenated header spelling defined by AgID (AUDIT_REST_01/02).",
       "request": {
         "headers": {
           "AgID-JWT-TrackingEvidence": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRlLWtpZCJ9.eyJqdGkiOiJ0ZS1qdGktMDAyIn0.c2lnbmF0dXJl"
@@ -250,7 +250,29 @@
         "pdnd.trackingEvidence.kid": "te-kid",
         "pdnd.trackingEvidence.jti": "te-jti-002"
       },
-      "notes": "Both spellings appear in PDND documentation. An implementation must accept either."
+      "notes": "PDND documentation writes both Agid-JWT-TrackingEvidence and AgID-JWT-TrackingEvidence. Header names are case-insensitive, so they are one header."
+    },
+    {
+      "id": "tracking-003",
+      "group": "tracking-evidence",
+      "description": "AUDIT_REST_02 tracking evidence carrying the audit claims suggested by AgID.",
+      "request": {
+        "headers": {
+          "Agid-JWT-TrackingEvidence": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtpZC1mcnVpdG9yZS0wMDEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJjbGllbnQtMDAxIiwiYXVkIjoiaHR0cHM6Ly9lc2VydmljZS5wYS5pdC9hcGkvdjEiLCJwdXJwb3NlSWQiOiIxYjM2MWQ0OS0zM2Y0LTRmMWUtYTg4Yi00ZTEyNjYxZjIzMDAiLCJkbm9uY2UiOiI2MjU1NDI5Mjg2MTY0IiwianRpIjoidGUtMDAxIiwiaWF0IjoxNzQ3NDA4NTM3LCJleHAiOjE3NDc0MDg4MzcsInVzZXJJRCI6InVzZXItMDAxIiwidXNlckxvY2F0aW9uIjoicG9zdGF6aW9uZS0wNDIiLCJMb0EiOiJTUElEX0wyIn0.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.trackingEvidence.kid": "kid-fruitore-001",
+        "pdnd.trackingEvidence.userID": "user-001",
+        "pdnd.trackingEvidence.userLocation": "postazione-042",
+        "pdnd.trackingEvidence.LoA": "SPID_L2",
+        "pdnd.trackingEvidence.purposeId": "1b361d49-33f4-4f1e-a88b-4e12661f2300",
+        "pdnd.trackingEvidence.dnonce": "6255429286164",
+        "__absent__": [
+          "http.header.agid-jwt-trackingevidence"
+        ]
+      },
+      "notes": "The audit claim set is agreed between fruitore and erogatore; an absent claim produces no key."
     },
     {
       "id": "adversarial-001",
@@ -405,6 +427,34 @@
         "pdnd.voucher.iss": "Città di Reggio nell'Emilia",
         "pdnd.voucher.organizationId": "Società per Azioni È"
       }
+    },
+    {
+      "id": "voucher-009",
+      "group": "voucher",
+      "description": "A DPoP-bound voucher in the shape PDND currently issues, under the DPoP authorization scheme: party and e-service identifiers, cnf.jkt, and the AUDIT_REST_02 digest.",
+      "request": {
+        "headers": {
+          "Authorization": "DPoP eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJSUzI1NiIsInVzZSI6InNpZyIsImtpZCI6ImtpZC1wZG5kLTAwMSJ9.eyJpc3MiOiJpbnRlcm9wLnBhZ29wYS5pdCIsIm5iZiI6MTc0NzQwODUzNywiaWF0IjoxNzQ3NDA4NTM3LCJleHAiOjE3NDc0MDk1MzcsImp0aSI6IjEyMjk3YWMxLWMxOTItNDU3My04MzUwLTIwN2E0MjEzZTVhYyIsImF1ZCI6Imh0dHBzOi8vZXNlcnZpY2UucGEuaXQvYXBpL3YxIiwic3ViIjoiOWIzNjFkNDktMzNmNC00ZjFlLWE4OGItNGUxMjY2MWYyMzA5IiwiY2xpZW50X2lkIjoiOWIzNjFkNDktMzNmNC00ZjFlLWE4OGItNGUxMjY2MWYyMzA5IiwicHVycG9zZUlkIjoiMWIzNjFkNDktMzNmNC00ZjFlLWE4OGItNGUxMjY2MWYyMzAwIiwicHJvZHVjZXJJZCI6IjBlOWUyZGFiLTJlOTMtNGYyNC1iYTU5LTM4ZDlmMTExOThjYSIsImNvbnN1bWVySWQiOiI2OWUyODY1ZS02NWFiLTRlNDgtYTYzOC0yMDM3YTllZTJlZTciLCJlc2VydmljZUlkIjoiYjhjNmQ3YWQtOTNmYy00ZWFmLTkwMTgtM2NkOGJmOTgxNjNmIiwiZGVzY3JpcHRvcklkIjoiOTUyNWE1NGItOTE1Ny00YjQ2LTg5NzYtZWM2NmYyMGI3ZDdlIiwiY25mIjp7ImprdCI6Ikw1VFA2eDZ2ZWQzcF9qbUlBdENpSE1jTkplUnJHV0F1c05uUWtUVHJuTFkifSwiZGlnZXN0Ijp7ImFsZyI6IlNIQTI1NiIsInZhbHVlIjoiNWRiMjYyMDFiNjg0NzYxZDJiOTcwMzI5YWI4NTk2NzczMTY0YmExYjQzYjE1NTk5ODBlMjAwNDU5NDFiODA2NSJ9fQ.c2lnbmF0dXJl"
+        }
+      },
+      "expect": {
+        "pdnd.voucher.typ": "at+jwt",
+        "pdnd.voucher.iss": "interop.pagopa.it",
+        "pdnd.voucher.client_id": "9b361d49-33f4-4f1e-a88b-4e12661f2309",
+        "pdnd.voucher.purposeId": "1b361d49-33f4-4f1e-a88b-4e12661f2300",
+        "pdnd.voucher.consumerId": "69e2865e-65ab-4e48-a638-2037a9ee2ee7",
+        "pdnd.voucher.producerId": "0e9e2dab-2e93-4f24-ba59-38d9f11198ca",
+        "pdnd.voucher.eserviceId": "b8c6d7ad-93fc-4eaf-9018-3cd8bf98163f",
+        "pdnd.voucher.descriptorId": "9525a54b-9157-4b46-8976-ec66f20b7d7e",
+        "pdnd.voucher.cnf.jkt": "L5TP6x6ved3p_jmIAtCiHMcNJeRrGWAusNnQkTTrnLY",
+        "pdnd.voucher.digest.alg": "SHA256",
+        "pdnd.voucher.digest.value": "5db26201b684761d2b970329ab8596773164ba1b43b1559980e20045941b8065",
+        "__absent__": [
+          "http.header.authorization",
+          "pdnd.voucher.organizationId"
+        ]
+      },
+      "notes": "Claims follow the examples in the PDND operating manual (developer.pagopa.it). The scheme follows RFC 9449 section 7.1. Current vouchers carry consumerId, not organizationId."
     },
     {
       "id": "signature-006",

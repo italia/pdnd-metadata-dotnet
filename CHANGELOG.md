@@ -5,6 +5,123 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0]
+
+Aligned with the token shapes in the current PDND Interoperabilità operating manual
+(developer.pagopa.it) and with the AgID AUDIT_REST and INTEGRITY_REST patterns. Targets `net8.0`
+and `net10.0`, as 2.0.0 did. No public API is removed or changed; the one behavioural change that
+can affect consumers is the renamed counter dimension, described under Changed.
+
+### Changed
+
+- **Metrics:** the `pdnd.requests` counter dimension that identifies the consumer organization is
+  now `pdnd.voucher.consumerId`, read from `consumerId` and falling back to `organizationId`. It
+  was `pdnd.voucher.organizationId`, but current PDND vouchers do not carry that claim, so the
+  dimension read `unknown` on real traffic. Dashboards and alerts on the old dimension name must
+  be updated.
+- `pdnd.voucher.organizationId`, `pdnd.voucher.clientId`, and `pdnd.voucher.dnonce` are documented
+  as legacy. They are still produced when a token carries them.
+
+### Fixed
+
+- `metadata.truncated` was reported for snapshots that were complete. The `MaxHeaderCount` bound
+  was checked before the allow, deny, and raw-capture filters, so reaching the bound exactly
+  and then meeting a header that would have been skipped anyway (a denied credential, a header
+  outside the allow list, a signed blob) emitted the flag although nothing had been dropped. The
+  bound is now checked only for a header that would actually be captured.
+- The voucher was not extracted from DPoP-bound requests. Only the `Bearer` scheme was
+  recognised, while a DPoP-bound voucher arrives as `Authorization: DPoP <JWT>` (RFC 9449 §7.1):
+  the DPoP proof was decoded but `purposeId`, `organizationId`, and every other voucher claim
+  were absent. Both schemes are now accepted. `PdndAuthorization.TryGetVoucherToken` is added;
+  `TryGetBearerToken` keeps its meaning.
+- `net.forwarded_for` used only the first value of `Forwarded` and `X-Forwarded-For`. When
+  several proxies each append their own header line, later hops were dropped. The chain now
+  joins every value in arrival order. Token headers still use their first value only.
+- `PathExclusions` matched raw string prefixes, so `/health` also skipped extraction for
+  `/healthcare` or `/health-records`. Matching is now by whole path segment, like
+  `PathString.StartsWithSegments`; a trailing slash on an exclusion is ignored.
+- `MaxValueLength` did not apply to claims decoded from tokens, nor to `Digest` and
+  `Content-Digest` values: they were bounded only by `MaxTokenLength`. They are now truncated
+  like every other value.
+- `Pdnd.Metadata.Diagnostics` dimensioned the client on `pdnd.voucher.clientId` only, while
+  PDND vouchers carry `client_id`, so the dimension read `unknown` on real traffic. It now falls
+  back to `pdnd.voucher.client_id`, which is also promoted to an activity tag.
+- The documentation named the tracking evidence header `Agid-JWT-Tracking-Evidence`, which
+  neither AgID nor PDND uses; the header is `Agid-JWT-TrackingEvidence`. Both have always been
+  accepted, so no request was affected. The specification also attributed the tracking evidence
+  to INTEGRITY_REST_02, which uses `Agid-JWT-Signature`; it belongs to AUDIT_REST_01/02.
+- The documentation recommended `AddSource(PdndInstrumentation.ActivitySourceName)`, which has no
+  effect: no `ActivitySource` is created and the tags go on the ASP.NET Core request activity.
+- The `Pdnd.Metadata.Diagnostics` package shipped the core README instead of its own.
+- Documentation diagrams brought in line with the code:
+  - `architecture` placed the library before "Validation", contradicting the recommended
+    registration after `UseAuthentication()`. It now runs after authentication and before the
+    authorization decision. The arrow to Diagnostics was dashed, which the legend defines as out
+    of scope; it is solid now.
+  - `keyspace` stated that keys are lowercase; several are camelCase (`purposeId`,
+    `consumerId`, `trackingEvidence`). Lookups are case-insensitive, which is what it now says.
+  - `pipeline` used the non-standard tracking evidence header name and `organizationId`.
+  - `conformance` still showed specification 1.1.0 and 30 vectors.
+
+### Security
+
+- The request counter in `Pdnd.Metadata.Diagnostics` used voucher claims as dimensions without
+  any bound. The voucher is not verified at that point, so forged tokens with random
+  identifiers could create an unbounded number of time series in the metrics backend. Each
+  dimension now records at most `PdndDiagnosticsOptions.MaxDistinctValuesPerDimension` distinct
+  values (default 100); later values are recorded as `other`.
+
+### Added
+
+- Voucher claims of the current PDND vouchers: `pdnd.voucher.consumerId`, `producerId`,
+  `eserviceId`, `descriptorId`, and `cnf.jkt` (DPoP vouchers, RFC 9449 §6.1).
+- Audit claims of the tracking evidence (AUDIT_REST_01/02): `pdnd.trackingEvidence.userID`,
+  `userLocation`, `LoA`, `purposeId`, and `dnonce`.
+- `pdnd.voucher.consumerId`, `eserviceId`, and `descriptorId` are promoted to activity tags.
+- `PdndDiagnosticsOptions`, registered with `services.AddPdndDiagnostics(...)`:
+  `IncludeConsumerDimensions` (default `true`) and `MaxDistinctValuesPerDimension`
+  (default `100`). `PdndInstrumentation.Record(metadata, options)` overload and
+  `PdndInstrumentation.RequestCounterName` constant.
+- Specification 1.2.0, with conformance vectors `voucher-009` (a DPoP-bound voucher in the current
+  PDND shape) and `tracking-003` (audit claims). The corpus goes from 30 to 32 vectors.
+
+### Infrastructure
+
+- Test suite extended from 240 to 327 tests per target framework. New coverage includes every
+  `Parse*` and `CaptureRaw*` switch when turned off or on, `PromoteTracingHeaders` and
+  `NormalizeForwardedHeaders`, `MaxHeaderValuesPerName`, the middleware's path exclusion and
+  fail-soft paths, Minimal API and MVC binding, the full `AddPdndMetadata()` /
+  `UsePdndMetadata()` pipeline, concurrent writers, and the counter bound under contention.
+  Line coverage is 98.9% and branch coverage 97.1%; the remaining lines are defensive branches
+  that the input validation makes unreachable.
+
+- `global.json` pins the build to the .NET 10 SDK (`10.0.100`, rolling forward to the latest
+  feature band), so local builds use the same SDK as CI instead of whatever is newest on the
+  machine.
+- `dotnet test` is invoked with `--solution`. Under Microsoft.Testing.Platform the .NET 10 SDK
+  rejects a positional solution argument, so the previous command failed on that SDK.
+- `Microsoft.SourceLink.GitHub` is declared once, in `Directory.Build.props`, at 10.0.404. It was
+  declared there at 10.0.301 and overridden at 10.0.403 in every project.
+- GitHub Actions updated: `actions/checkout` v7, `actions/setup-dotnet` v6,
+  `actions/setup-python` v7.
+- CodeQL code scanning (`codeql.yml`) for C#, Python, and the GitHub Actions workflows, with the
+  `security-and-quality` suite, on push and pull request to `main` and weekly. C# is analysed from
+  a real build of both target frameworks rather than extracted without one.
+- OpenSSF Scorecard (`scorecard.yml`), published to the Scorecard API and to code scanning, with
+  its badge in both READMEs.
+- Every GitHub Action in every workflow is pinned to a commit SHA, with the release in a trailing
+  comment, so a moved tag cannot change what runs.
+- Dependabot (`.github/dependabot.yml`) keeps the pinned actions and the NuGet packages current,
+  weekly, grouped into one pull request per ecosystem. Major versions of the packages tied to the
+  .NET release (`Microsoft.AspNetCore.OpenApi`, `Microsoft.SourceLink.GitHub`,
+  `Swashbuckle.AspNetCore`) are excluded, because adopting them means moving the target framework.
+  Commitlint ignores Dependabot commits, whose bodies quote release notes beyond the line limit.
+- `SECURITY.md` lists 2.x as the supported line and describes the automated checks.
+- Test dependencies updated: `Microsoft.NET.Test.Sdk` 18.12.0, `xunit.v3` 4.0.3. Sample updated:
+  `Microsoft.AspNetCore.OpenApi` 10.0.15. The .NET 11 majors (`Microsoft.AspNetCore.OpenApi`
+  11.x, `Microsoft.SourceLink.GitHub` 11.x) and `Swashbuckle.AspNetCore` 11.x, which requires
+  `Microsoft.OpenApi` 3 and conflicts with ASP.NET Core 10, are deliberately not adopted.
+
 ## [2.0.0]
 
 Released from 1.0.0. A 1.0.1 was prepared but never published to NuGet, so its changes are

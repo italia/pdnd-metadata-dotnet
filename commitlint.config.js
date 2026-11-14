@@ -1,5 +1,9 @@
 export default {
   parserPreset: 'conventional-changelog-conventionalcommits',
+  // Dependabot writes conventional headers (configured in .github/dependabot.yml), but its bodies
+  // quote release notes with lines well over 100 characters. Its commits are recognised by the
+  // sign-off it always adds.
+  ignores: [(message) => /^Signed-off-by: dependabot\[bot\]/m.test(message)],
   rules: {
     'body-leading-blank': [1, 'always'],
     'body-max-line-length': [2, 'always', 100],

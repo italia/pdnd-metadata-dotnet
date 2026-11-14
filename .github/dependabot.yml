@@ -1,0 +1,43 @@
+# Keeps the pinned GitHub Actions SHAs and the NuGet packages current. Updates are grouped so
+# that one weekly pull request covers each ecosystem instead of one per dependency.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "ci"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      test:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
+          - "xunit*"
+          - "FluentAssertions"
+      build-and-sample:
+        patterns: ["*"]
+    ignore:
+      # The repository targets .NET 8 and .NET 10. These packages ship one major version per
+      # .NET release, so a new major means moving the target framework, which is a deliberate
+      # decision rather than a routine update.
+      - dependency-name: "Microsoft.AspNetCore.OpenApi"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.SourceLink.GitHub"
+        update-types: ["version-update:semver-major"]
+      # Swashbuckle.AspNetCore 11 requires Microsoft.OpenApi 3, which ASP.NET Core 10 does not
+      # accept. Revisit together with the move to a newer target framework.
+      - dependency-name: "Swashbuckle.AspNetCore"
+        update-types: ["version-update:semver-major"]

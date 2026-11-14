@@ -4,6 +4,43 @@ This file tracks the PDND metadata extraction specification and its conformance 
 versioned independently of any implementation: the `Pdnd.Metadata` packages have their own
 version and their own changelog.
 
+## [1.2.0]
+
+### Added
+
+- **DPoP-bound vouchers.** The voucher is read from `Authorization: DPoP <JWT>` as well as from
+  `Authorization: Bearer <JWT>` (RFC 9449 §7.1). Until now a DPoP-bound request produced the
+  `pdnd.dpop.*` keys but no `pdnd.voucher.*` key at all, so purpose and organization were missing
+  in exactly the flow with the strongest binding.
+- **Claims of the vouchers PDND currently issues.** `pdnd.voucher.consumerId`, `producerId`,
+  `eserviceId`, `descriptorId`, and `cnf.jkt`, as they appear in the voucher examples of the PDND
+  operating manual. Until now the identity of the fruitore was read only from `organizationId`,
+  which those vouchers do not carry.
+- `pdnd.voucher.digest.alg` and `pdnd.voucher.digest.value`, the AUDIT_REST_02 hash of the
+  tracking evidence, are now part of the specification. Implementations already produced them.
+- **Audit claims of the tracking evidence.** `pdnd.trackingEvidence.userID`, `userLocation`, and
+  `LoA`, the claims the AgID AUDIT_REST patterns suggest, plus `purposeId` and `dnonce`.
+- Two vectors, taking the corpus from 30 to 32:
+  - `voucher-009`, a DPoP-bound voucher in the current PDND shape, under the `DPoP` scheme
+  - `tracking-003`, a tracking evidence carrying the audit claims
+
+### Changed
+
+- `pdnd.voucher.organizationId`, `pdnd.voucher.clientId`, and `pdnd.voucher.dnonce` are moved to a
+  legacy section. They are still produced when present.
+- The tracking evidence header is named `Agid-JWT-TrackingEvidence`, as in the AgID guidelines
+  and the PDND manual. The hyphenated `Agid-JWT-Tracking-Evidence`, previously presented as the
+  primary name, is not used by either and remains accepted for compatibility only.
+- The pattern table attributed the tracking evidence to INTEGRITY_REST_02. The tracking evidence
+  belongs to AUDIT_REST_01/02; INTEGRITY_REST_02 uses `Agid-JWT-Signature`.
+- The configuration reference had not followed the 2.0.0 defaults: `CaptureAllHeaders` is
+  `false`, the deny list has ten entries, and `MaxHeaderCount` and `PathExclusions` were missing.
+
+- `net.forwarded_for` is built from every value of `Forwarded` (or, failing that,
+  `X-Forwarded-For`), across repeated header lines, in arrival order. Proxies that append their
+  own header line rather than extend the existing one were silently dropped from the chain.
+- Claim values decoded from tokens are bounded by `MaxValueLength`, like every other value.
+
 ## [1.1.0]
 
 ### Added

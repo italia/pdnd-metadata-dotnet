@@ -51,6 +51,44 @@ public class PdndCallerMetadataTests
     }
 
     [Fact]
+    public void Clone_IsIndependent_AndKeepsTheCreationTime()
+    {
+        var md = new PdndCallerMetadata();
+        md.Add("k", "v1", PdndMetadataSource.Header);
+
+        var clone = md.Clone();
+        clone.Add("k", "v2", PdndMetadataSource.Header);
+        md.Add("other", "x", PdndMetadataSource.Header);
+
+        md.GetValues("k").Should().Equal("v1");
+        clone.GetFirstValue("other").Should().BeNull();
+        clone.CreatedAtUtc.Should().Be(md.CreatedAtUtc);
+    }
+
+    [Fact]
+    public void GetValues_ReturnsEmpty_ForAMissingKey_AndACopyForAPresentOne()
+    {
+        var md = new PdndCallerMetadata();
+        md.GetValues("missing").Should().BeEmpty();
+
+        md.Add("k", "v1", PdndMetadataSource.Header);
+        var values = md.GetValues("k");
+        md.Add("k", "v2", PdndMetadataSource.Header);
+
+        values.Should().Equal("v1");
+    }
+
+    [Fact]
+    public void Add_IsSafeUnderConcurrentWriters()
+    {
+        var md = new PdndCallerMetadata();
+
+        Parallel.For(0, 1000, i => md.Add("k", "v" + i, PdndMetadataSource.Derived));
+
+        md.GetValues("k").Should().HaveCount(1000).And.OnlyHaveUniqueItems();
+    }
+
+    [Fact]
     public void Add_ShouldIgnoreEmptyKeyOrValue()
     {
         var md = new PdndCallerMetadata();

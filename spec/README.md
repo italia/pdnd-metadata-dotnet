@@ -1,13 +1,13 @@
 # PDND Metadata Extraction Specification
 
-**Version 1.1.0** · MIT · Not an official AgID or PagoPA document
+**Version 1.2.0** · MIT · Not an official AgID or PagoPA document
 
 ## What this is
 
 A naming convention and a conformance corpus for extracting metadata from inbound PDND requests.
 
 Every organisation that exposes an e-service on PDND Interoperabilità writes the same code: read
-`Authorization`, decode the voucher, pull out `purposeId` and `organizationId`, read the tracking
+`Authorization`, decode the voucher, pull out `purposeId` and `consumerId`, read the tracking
 evidence, read the DPoP proof, read `Digest` or `Content-Digest`, read `Agid-JWT-Signature`. Each
 one invents its own names for the results, so two services in the same organisation log the same
 fact under two different keys, and no dashboard, no SIEM rule, and no audit query works across
@@ -84,7 +84,7 @@ test suite.
 
 ```
 $ cd reference/python && python3 conformance.py
-30/30 vectors passed
+32/32 vectors passed
 ```
 
 A header value is either a string or, when the vector exercises repetition, an array of strings.
@@ -153,7 +153,7 @@ blob. Keys carry claims *about* those artifacts. An implementation that stores t
 An implementation declares conformance by naming the specification version it targets and the
 result of running the corpus:
 
-> Conforms to PDND Metadata Extraction 1.1.0. Passes 30 of 30 conformance vectors.
+> Conforms to PDND Metadata Extraction 1.2.0. Passes 32 of 32 conformance vectors.
 
 There is no certification, no authority, and no badge to apply for. The claim is verifiable by
 anyone who runs the corpus, which is the only enforcement mechanism a specification of this size
@@ -163,8 +163,8 @@ Two rules make the claim meaningful:
 
 - **All vectors, or none.** There are no optional groups. An implementation that skips the
   `adversarial` group has skipped the part that matters.
-- **The corpus is not the test suite.** Passing 30 of 30 says the implementation agrees with
-  this specification on 30 inputs. It says nothing about the inputs nobody has written a vector
+- **The corpus is not the test suite.** Passing every vector says the implementation agrees with
+  this specification on 32 inputs. It says nothing about the inputs nobody has written a vector
   for yet, which is why the contribution guidance below asks for vectors rather than prose.
 
 ## Versioning

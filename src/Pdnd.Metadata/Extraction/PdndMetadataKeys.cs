@@ -105,10 +105,34 @@ public static class PdndMetadataKeys
     /// <summary>Voucher client_id (OAuth 2.0 standard underscore form, if present).</summary>
     public const string PdndVoucherClientIdUnderscore = "pdnd.voucher.client_id";
 
-    /// <summary>Voucher organizationId claim (PDND fruitore organization, if present).</summary>
+    /// <summary>
+    /// Voucher organizationId claim (if present). Legacy: current PDND vouchers identify the
+    /// fruitore with <c>consumerId</c>, see <see cref="PdndVoucherConsumerId"/>.
+    /// </summary>
     public const string PdndVoucherOrganizationId = "pdnd.voucher.organizationId";
 
-    /// <summary>Voucher dnonce claim (anti-replay nonce, if present).</summary>
+    /// <summary>Voucher consumerId claim: identifier of the fruitore organization on PDND.</summary>
+    public const string PdndVoucherConsumerId = "pdnd.voucher.consumerId";
+
+    /// <summary>Voucher producerId claim: identifier of the erogatore organization on PDND.</summary>
+    public const string PdndVoucherProducerId = "pdnd.voucher.producerId";
+
+    /// <summary>Voucher eserviceId claim: identifier of the e-service the voucher grants access to.</summary>
+    public const string PdndVoucherEserviceId = "pdnd.voucher.eserviceId";
+
+    /// <summary>Voucher descriptorId claim: identifier of the e-service version (descriptor).</summary>
+    public const string PdndVoucherDescriptorId = "pdnd.voucher.descriptorId";
+
+    /// <summary>
+    /// Voucher cnf.jkt claim: JWK SHA-256 thumbprint of the key bound to a DPoP voucher
+    /// (RFC 9449 §6.1). Present only on DPoP vouchers.
+    /// </summary>
+    public const string PdndVoucherCnfJkt = "pdnd.voucher.cnf.jkt";
+
+    /// <summary>
+    /// Voucher dnonce claim (if present). Not part of current PDND vouchers: in AUDIT_REST_02
+    /// the claim belongs to the tracking evidence, see <see cref="PdndTrackingDnonce"/>.
+    /// </summary>
     public const string PdndVoucherDnonce = "pdnd.voucher.dnonce";
 
     /// <summary>Voucher digest.alg claim (hash algorithm of the tracking evidence, if present).</summary>
@@ -146,6 +170,21 @@ public static class PdndMetadataKeys
 
     /// <summary>Tracking evidence payload not-before (if present).</summary>
     public const string PdndTrackingNbf = "pdnd.trackingEvidence.nbf";
+
+    /// <summary>Tracking evidence userID audit claim: user identifier within the fruitore domain (if present).</summary>
+    public const string PdndTrackingUserId = "pdnd.trackingEvidence.userID";
+
+    /// <summary>Tracking evidence userLocation audit claim: workstation identifier within the fruitore domain (if present).</summary>
+    public const string PdndTrackingUserLocation = "pdnd.trackingEvidence.userLocation";
+
+    /// <summary>Tracking evidence LoA audit claim: level of assurance of the user authentication (if present).</summary>
+    public const string PdndTrackingLoA = "pdnd.trackingEvidence.LoA";
+
+    /// <summary>Tracking evidence purposeId claim (if present).</summary>
+    public const string PdndTrackingPurposeId = "pdnd.trackingEvidence.purposeId";
+
+    /// <summary>Tracking evidence dnonce claim (if present).</summary>
+    public const string PdndTrackingDnonce = "pdnd.trackingEvidence.dnonce";
 
     /// <summary>Normalized Digest algorithm (best-effort).</summary>
     public const string PdndDigestAlg = "pdnd.digest.alg";

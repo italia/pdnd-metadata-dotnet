@@ -103,7 +103,13 @@ app.MapGet("/minimal/pdnd", (PdndCallerMetadataParameter pdnd) =>
             nbf = md.GetFirstValue(PdndMetadataKeys.PdndVoucherNbf),
             exp = md.GetFirstValue(PdndMetadataKeys.PdndVoucherExp),
             purposeId = md.GetFirstValue(PdndMetadataKeys.PdndVoucherPurposeId),
-            clientId = md.GetFirstValue(PdndMetadataKeys.PdndVoucherClientId)
+            clientId = md.GetFirstValue(PdndMetadataKeys.PdndVoucherClientIdUnderscore)
+                       ?? md.GetFirstValue(PdndMetadataKeys.PdndVoucherClientId),
+            consumerId = md.GetFirstValue(PdndMetadataKeys.PdndVoucherConsumerId),
+            producerId = md.GetFirstValue(PdndMetadataKeys.PdndVoucherProducerId),
+            eserviceId = md.GetFirstValue(PdndMetadataKeys.PdndVoucherEserviceId),
+            descriptorId = md.GetFirstValue(PdndMetadataKeys.PdndVoucherDescriptorId),
+            cnfJkt = md.GetFirstValue(PdndMetadataKeys.PdndVoucherCnfJkt)
         },
         trackingEvidence = new
         {
@@ -112,7 +118,10 @@ app.MapGet("/minimal/pdnd", (PdndCallerMetadataParameter pdnd) =>
             typ = md.GetFirstValue(PdndMetadataKeys.PdndTrackingTyp),
             iss = md.GetFirstValue(PdndMetadataKeys.PdndTrackingIss),
             sub = md.GetFirstValue(PdndMetadataKeys.PdndTrackingSub),
-            jti = md.GetFirstValue(PdndMetadataKeys.PdndTrackingJti)
+            jti = md.GetFirstValue(PdndMetadataKeys.PdndTrackingJti),
+            userID = md.GetFirstValue(PdndMetadataKeys.PdndTrackingUserId),
+            userLocation = md.GetFirstValue(PdndMetadataKeys.PdndTrackingUserLocation),
+            LoA = md.GetFirstValue(PdndMetadataKeys.PdndTrackingLoA)
         },
         dpop = new
         {

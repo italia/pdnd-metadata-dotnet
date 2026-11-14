@@ -95,17 +95,17 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         return md;
     }
 
-    private static void ExtractPdnd(PdndCallerMetadata md, IReadOnlyDictionary<string, string?> headers, PdndMetadataOptions options)
+    private static void ExtractPdnd(PdndCallerMetadata md, IReadOnlyDictionary<string, IReadOnlyList<string>> headers, PdndMetadataOptions options)
     {
-        // 1) Voucher in Authorization: Bearer <JWT>
+        // 1) Voucher in Authorization: Bearer <JWT> or DPoP <JWT> (DPoP-bound voucher)
         if (options.ParsePdndVoucherFromAuthorizationBearer)
         {
             var auth = GetHeaderFirst(headers, PdndHeaderNames.Authorization);
-            if (PdndAuthorization.TryGetBearerToken(auth, out var bearerToken) &&
+            if (PdndAuthorization.TryGetVoucherToken(auth, out var bearerToken) &&
                 IsTokenLengthAllowed(bearerToken, options) &&
                 JwtDecoder.TryDecode(bearerToken!, out var jwt))
             {
-                PdndVoucherClaimsExtractor.Extract(md, jwt!); // fail-soft internally
+                ExtractTruncated(md, options, scratch => PdndVoucherClaimsExtractor.Extract(scratch, jwt!)); // fail-soft internally
             }
         }
 
@@ -119,7 +119,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(te, options) &&
                 JwtDecoder.TryDecode(te!, out var jws))
             {
-                PdndTrackingEvidenceExtractor.Extract(md, jws!); // fail-soft internally
+                ExtractTruncated(md, options, scratch => PdndTrackingEvidenceExtractor.Extract(scratch, jws!)); // fail-soft internally
             }
         }
 
@@ -131,7 +131,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(dpop, options) &&
                 JwtDecoder.TryDecode(dpop!, out var proof))
             {
-                PdndDpopExtractor.Extract(md, proof!); // fail-soft internally
+                ExtractTruncated(md, options, scratch => PdndDpopExtractor.Extract(scratch, proof!)); // fail-soft internally
             }
         }
 
@@ -143,10 +143,10 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 DigestParser.TryParseDigestHeader(digest!, out var alg, out var value))
             {
                 if (!string.IsNullOrWhiteSpace(alg))
-                    md.Add(PdndMetadataKeys.PdndDigestAlg, alg!, PdndMetadataSource.Header);
+                    md.Add(PdndMetadataKeys.PdndDigestAlg, Truncate(alg!, options.MaxValueLength), PdndMetadataSource.Header);
 
                 if (!string.IsNullOrWhiteSpace(value))
-                    md.Add(PdndMetadataKeys.PdndDigestValue, value!, PdndMetadataSource.Header);
+                    md.Add(PdndMetadataKeys.PdndDigestValue, Truncate(value!, options.MaxValueLength), PdndMetadataSource.Header);
             }
         }
 
@@ -158,10 +158,10 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 DigestParser.TryParseContentDigestHeader(contentDigest!, out var cdAlg, out var cdValue))
             {
                 if (!string.IsNullOrWhiteSpace(cdAlg))
-                    md.Add(PdndMetadataKeys.PdndContentDigestAlg, cdAlg!, PdndMetadataSource.Header);
+                    md.Add(PdndMetadataKeys.PdndContentDigestAlg, Truncate(cdAlg!, options.MaxValueLength), PdndMetadataSource.Header);
 
                 if (!string.IsNullOrWhiteSpace(cdValue))
-                    md.Add(PdndMetadataKeys.PdndContentDigestValue, cdValue!, PdndMetadataSource.Header);
+                    md.Add(PdndMetadataKeys.PdndContentDigestValue, Truncate(cdValue!, options.MaxValueLength), PdndMetadataSource.Header);
             }
         }
 
@@ -173,8 +173,25 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(sig, options) &&
                 JwtDecoder.TryDecode(sig!, out var sigToken))
             {
-                PdndSignatureExtractor.Extract(md, sigToken!); // fail-soft internally
+                ExtractTruncated(md, options, scratch => PdndSignatureExtractor.Extract(scratch, sigToken!)); // fail-soft internally
             }
+        }
+    }
+
+    /// <summary>
+    /// Runs a token extractor into a scratch snapshot and copies the result, truncated to
+    /// <see cref="PdndMetadataOptions.MaxValueLength"/>. The extractors are public and take no
+    /// options, so the bound is applied here rather than inside each of them.
+    /// </summary>
+    private static void ExtractTruncated(PdndCallerMetadata md, PdndMetadataOptions options, Action<PdndCallerMetadata> extract)
+    {
+        var scratch = new PdndCallerMetadata();
+        extract(scratch);
+
+        foreach (var entry in scratch.Snapshot())
+        {
+            foreach (var item in entry.Value)
+                md.Add(item.Key, Truncate(item.Value, options.MaxValueLength), item.Source);
         }
     }
 
@@ -211,12 +228,6 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
             if (string.IsNullOrWhiteSpace(h.Name))
                 continue;
 
-            if (captured >= options.MaxHeaderCount)
-            {
-                md.Add(PdndMetadataKeys.MetadataTruncated, "headers", PdndMetadataSource.Derived);
-                break;
-            }
-
             // Special cases: signed blobs can be suppressed from raw capture
             if (PdndHeaderNames.IsTrackingEvidenceHeader(h.Name) && !options.CaptureRawTrackingEvidenceHeader)
                 continue;
@@ -236,6 +247,15 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
             if (!options.CaptureAllHeaders && !options.HeaderAllowList.Contains(h.Name))
                 continue;
 
+            // The bound is checked only for a header that would actually be captured. Checking it
+            // before the filters reported truncation when every remaining header was going to be
+            // skipped anyway, which made a complete snapshot look incomplete.
+            if (captured >= options.MaxHeaderCount)
+            {
+                md.Add(PdndMetadataKeys.MetadataTruncated, "headers", PdndMetadataSource.Derived);
+                break;
+            }
+
             captured++;
 
             var values = h.Values?.Take(Math.Max(1, options.MaxHeaderValuesPerName)) ?? Enumerable.Empty<string>();
@@ -252,15 +272,17 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         }
     }
 
-    private static void NormalizeForwardedFor(PdndCallerMetadata md, IReadOnlyDictionary<string, string?> headers, PdndMetadataOptions options)
+    private static void NormalizeForwardedFor(PdndCallerMetadata md, IReadOnlyDictionary<string, IReadOnlyList<string>> headers, PdndMetadataOptions options)
     {
-        var forwarded = GetHeaderFirst(headers, "Forwarded");
-        var xff = GetHeaderFirst(headers, "X-Forwarded-For");
-
         var chain = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(forwarded))
+        // Every value counts, not only the first: each proxy may append its own header line
+        // rather than extend an existing one, and the chain is the concatenation of all of them.
+        foreach (var forwarded in GetHeaderAll(headers, "Forwarded"))
         {
+            if (string.IsNullOrWhiteSpace(forwarded))
+                continue;
+
             var parts = forwarded.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             foreach (var part in parts)
             {
@@ -286,10 +308,16 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
             }
         }
 
-        if (chain.Count == 0 && !string.IsNullOrWhiteSpace(xff))
+        if (chain.Count == 0)
         {
-            var parts = xff.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            chain.AddRange(parts.Where(p => !string.IsNullOrWhiteSpace(p)));
+            foreach (var xff in GetHeaderAll(headers, "X-Forwarded-For"))
+            {
+                if (string.IsNullOrWhiteSpace(xff))
+                    continue;
+
+                var parts = xff.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                chain.AddRange(parts.Where(p => !string.IsNullOrWhiteSpace(p)));
+            }
         }
 
         if (chain.Count > 0)
@@ -301,25 +329,38 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         }
     }
 
-    private static Dictionary<string, string?> BuildHeaderLookup(PdndRequestContext context)
+    /// <summary>
+    /// Groups every header value by case-insensitive name, preserving arrival order. Built once
+    /// per request: the PDND extraction path looks up at least nine well-known headers.
+    /// </summary>
+    private static Dictionary<string, IReadOnlyList<string>> BuildHeaderLookup(PdndRequestContext context)
     {
-        var lookup = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var lookup = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var header in context.Headers)
         {
-            if (string.IsNullOrWhiteSpace(header.Name))
+            if (string.IsNullOrWhiteSpace(header.Name) || header.Values is null)
                 continue;
 
-            // First value wins, matching the previous FirstOrDefault behaviour.
-            if (!lookup.ContainsKey(header.Name))
-                lookup[header.Name] = header.Values?.FirstOrDefault();
+            if (!lookup.TryGetValue(header.Name, out var existing))
+            {
+                lookup[header.Name] = header.Values.Where(v => v is not null).ToList();
+                continue;
+            }
+
+            ((List<string>)existing).AddRange(header.Values.Where(v => v is not null));
         }
 
         return lookup;
     }
 
-    private static string? GetHeaderFirst(IReadOnlyDictionary<string, string?> headers, string name)
-        => headers.TryGetValue(name, out var value) ? value : null;
+    /// <summary>First value of a header. Token headers use the first value only.</summary>
+    private static string? GetHeaderFirst(IReadOnlyDictionary<string, IReadOnlyList<string>> headers, string name)
+        => headers.TryGetValue(name, out var values) && values.Count > 0 ? values[0] : null;
+
+    /// <summary>Every value of a header, across repeated lines, in arrival order.</summary>
+    private static IReadOnlyList<string> GetHeaderAll(IReadOnlyDictionary<string, IReadOnlyList<string>> headers, string name)
+        => headers.TryGetValue(name, out var values) ? values : Array.Empty<string>();
 
     private static string Truncate(string value, int maxLen)
         => maxLen <= 0 ? string.Empty : value.Length <= maxLen ? value : value.Substring(0, maxLen);
