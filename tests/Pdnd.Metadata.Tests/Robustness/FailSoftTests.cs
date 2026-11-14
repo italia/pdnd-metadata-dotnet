@@ -207,6 +207,13 @@ public sealed class FailSoftTests
     [Fact]
     public async Task DiagnosticsMiddleware_WhenAMetricListenerThrows_StillProceeds()
     {
+        // Meter listeners are process-wide and xUnit runs test classes in parallel. A listener
+        // that threw on every measurement would break any other test recording at the same time,
+        // and would stop later listeners from seeing their measurements. It throws only for the
+        // measurement this test produces, recognised by a unique purpose.
+        var marker = "purpose-" + Guid.NewGuid();
+        var thrown = 0;
+
         using var listener = new MeterListener
         {
             InstrumentPublished = (instrument, l) =>
@@ -215,14 +222,28 @@ public sealed class FailSoftTests
                     l.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<long>((_, _, _, _) => throw new InvalidOperationException("exporter down"));
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                if (tag.Key == PdndMetadataKeys.PdndVoucherPurposeId && Equals(tag.Value, marker))
+                {
+                    Interlocked.Increment(ref thrown);
+                    throw new InvalidOperationException("exporter down");
+                }
+            }
+        });
         listener.Start();
 
+        var metadata = new PdndCallerMetadata();
+        metadata.Add(PdndMetadataKeys.PdndVoucherPurposeId, marker, PdndMetadataSource.Claims);
+
         var context = new DefaultHttpContext();
-        context.Items[PdndMetadataAspNetCoreConstants.HttpContextItemKey] = new PdndCallerMetadata();
+        context.Items[PdndMetadataAspNetCoreConstants.HttpContextItemKey] = metadata;
 
         var proceeded = await RunsNext(next => new PdndDiagnosticsMiddleware(next).InvokeAsync, context);
 
+        thrown.Should().Be(1, "the listener must actually have failed for the test to mean anything");
         proceeded.Should().BeTrue();
     }
 
