@@ -17,6 +17,13 @@ The wordmark is set in a monospace stack. Monospace is the vernacular of HTTP he
 | `logo.svg` | Square mark, light backgrounds. README header, organisation avatar, favicon source. |
 | `logo-dark.svg` | Square mark, dark backgrounds. Brighter blue (`#4D9BEF`) for contrast on GitHub dark. |
 | `logo-wordmark.svg` | Horizontal lockup with wordmark and descriptor. README header at larger sizes. |
+| `icon.png` | 256 px render of `logo.svg`, transparent background. NuGet package icon, since NuGet does not accept SVG. |
+
+To regenerate the icon after changing the logo:
+
+```
+inkscape assets/logo.svg --export-type=png --export-width=256 --export-height=256 --export-filename=assets/icon.png
+```
 
 ## README snippet
 

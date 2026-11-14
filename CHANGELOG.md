@@ -117,6 +117,15 @@ can affect consumers is the renamed counter dimension, described under Changed.
   `Swashbuckle.AspNetCore`) are excluded, because adopting them means moving the target framework.
   Commitlint ignores Dependabot commits, whose bodies quote release notes beyond the line limit.
 - `SECURITY.md` lists 2.x as the supported line and describes the automated checks.
+- All three packages carry the project logo as their NuGet icon (`assets/icon.png`, a 256 px
+  render of `logo.svg`), declared once in `Directory.Build.props`.
+- The publish workflow verifies, before pushing, that every package contains `lib/net8.0`,
+  `lib/net10.0`, the icon, and the readme, and refuses to publish otherwise.
+- Package validation is enabled against the published 2.0.0 baseline: a change that breaks binary
+  compatibility of the public API now fails the build. 2.1.0 passes it, which confirms the release
+  is non-breaking at the API level. The baseline must be raised after each release.
+- Packages link their release notes to this changelog at the release tag, and carry the `pagopa`
+  tag; `Pdnd.Metadata.Diagnostics` also carries `aspnetcore`.
 - Test dependencies updated: `Microsoft.NET.Test.Sdk` 18.12.0, `xunit.v3` 4.0.3. Sample updated:
   `Microsoft.AspNetCore.OpenApi` 10.0.15. The .NET 11 majors (`Microsoft.AspNetCore.OpenApi`
   11.x, `Microsoft.SourceLink.GitHub` 11.x) and `Swashbuckle.AspNetCore` 11.x, which requires

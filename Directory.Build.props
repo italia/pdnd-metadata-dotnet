@@ -18,6 +18,18 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
+    <!-- Icon shown on nuget.org. NuGet does not accept SVG, so assets/icon.png is a 256 px render
+         of assets/logo.svg; regenerate it when the logo changes. -->
+    <PackageIcon>icon.png</PackageIcon>
+
+    <!-- Release notes tab on nuget.org: points at the changelog as of the release tag. -->
+    <PackageReleaseNotes>https://github.com/italia/pdnd-metadata-dotnet/blob/v$(VersionPrefix)/CHANGELOG.md</PackageReleaseNotes>
+
+    <!-- Fails the pack when the public API breaks binary compatibility with the last published
+         release. Raise the baseline after each release. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>2.0.0</PackageValidationBaselineVersion>
+
     <!-- Build quality -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -34,6 +46,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.404" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- Packed only by the projects that produce a package; inert in tests and samples. -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)assets/icon.png" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
 
 </Project>

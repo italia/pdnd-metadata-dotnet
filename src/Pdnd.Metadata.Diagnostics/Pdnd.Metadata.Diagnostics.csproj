@@ -7,7 +7,7 @@
     <PackageId>Pdnd.Metadata.Diagnostics</PackageId>
     <Title>Pdnd.Metadata.Diagnostics</Title>
     <Description>Projects PDND request metadata onto System.Diagnostics Activity tags and metrics, consumable by OpenTelemetry without taking a dependency on it.</Description>
-    <PackageTags>pdnd;interoperabilita;modi;agid;opentelemetry;observability;tracing;metrics;italia;pa</PackageTags>
+    <PackageTags>pdnd;pagopa;interoperabilita;modi;agid;aspnetcore;opentelemetry;observability;tracing;metrics;italia;pa</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>

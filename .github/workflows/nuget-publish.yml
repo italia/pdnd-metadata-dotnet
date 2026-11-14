@@ -67,6 +67,22 @@ jobs:
               -p:PackageVersion=${{ steps.version.outputs.version }} --output ./nupkgs
           done
 
+      # A package missing a target framework or its icon is not obviously broken: nuget.org
+      # accepts it and the gap only shows on the package page. Refuse to publish instead.
+      - name: Verify package contents
+        run: |
+          status=0
+          for package in ./nupkgs/*.nupkg; do
+            listing=$(unzip -l "$package")
+            for entry in "lib/net8.0/" "lib/net10.0/" "icon.png" "README.md"; do
+              if ! grep -q "$entry" <<< "$listing"; then
+                echo "::error file=$package::missing $entry"
+                status=1
+              fi
+            done
+          done
+          exit $status
+
       - name: Push to NuGet
         run: >
           dotnet nuget push ./nupkgs/*.nupkg
