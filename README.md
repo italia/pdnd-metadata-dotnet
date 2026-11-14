@@ -24,14 +24,14 @@
 
 ---
 
-Chi espone un e-service sulla PDND riceve richieste che trasportano un voucher, spesso un token di
-tracking evidence, una prova DPoP, un digest del corpo, e una firma di integrità. Sapere chi sta
-chiamando, con quale finalità, e come correlare la chiamata richiede di leggere e decodificare
-tutti questi header.
+Un e-service esposto sulla PDND riceve richieste che portano con sé un voucher e, spesso, anche un
+token di tracking evidence, una prova DPoP, il digest del corpo e una firma di integrità. Per
+sapere chi sta chiamando, per quale finalità e come correlare la chiamata, bisogna leggere e
+decodificare tutti questi header.
 
-Questa libreria lo fa una volta sola, in modo uniforme, e produce uno snapshot con nomi di chiave
-stabili. Il vocabolario di chiavi è definito in una specifica separata, cosicché due servizi della
-stessa amministrazione registrino lo stesso fatto sotto lo stesso nome.
+Questa libreria se ne occupa una volta per tutte, in modo uniforme, e restituisce uno snapshot con
+nomi di chiave stabili. Il vocabolario delle chiavi è definito in una specifica a parte, così due
+servizi della stessa amministrazione registrano la stessa informazione con lo stesso nome.
 
 ## Dove si colloca
 
@@ -42,11 +42,11 @@ stessa amministrazione registrino lo stesso fatto sotto lo stesso nome.
   </picture>
 </p>
 
-Il middleware gira dentro il servizio erogatore, dopo il reverse proxy e l'autenticazione e prima
-della decisione di autorizzazione.
-Non partecipa alla decisione di fiducia, e non respinge mai una richiesta.
+Il middleware viene eseguito all'interno del servizio erogatore, dopo il reverse proxy e
+l'autenticazione, e prima della decisione di autorizzazione. Non prende parte alla decisione di
+fiducia e non rifiuta mai una richiesta.
 
-## In pratica
+## In breve
 
 ```csharp
 var md = accessor.Current;
@@ -57,7 +57,7 @@ md.GetFirstValue(PdndMetadataKeys.PdndVoucherEserviceId);   // "b8c6d7ad-..." e-
 md.GetFirstValue(PdndMetadataKeys.CorrelationId);           // "b7c1..."
 ```
 
-## Confini
+## Cosa fa e cosa non fa
 
 <p align="center">
   <picture>
@@ -66,27 +66,28 @@ md.GetFirstValue(PdndMetadataKeys.CorrelationId);           // "b7c1..."
   </picture>
 </p>
 
-La libreria estrae e normalizza. Non verifica.
+La libreria estrae e normalizza, ma non verifica nulla.
 
 | Fa | Non fa |
 | --- | --- |
-| Decodifica voucher (`Bearer` e `DPoP`), tracking evidence, e prove DPoP | Verifica delle firme JWS |
-| Riporta `cnf.jkt` del voucher e `ath` della prova | Verifica del legame tra voucher e prova DPoP |
-| Normalizza `Digest` e `Content-Digest` | Confronto del digest con il corpo effettivo |
-| Legge i claim di `Agid-JWT-Signature` | Controllo di corrispondenza degli header firmati |
-| Promuove correlazione e tracing | Rilevamento di replay o di scadenza |
-| Applica limiti su ciò che viene trattenuto | Qualsiasi decisione di autorizzazione |
+| Decodifica il voucher (`Bearer` e `DPoP`), la tracking evidence e la prova DPoP | Verificare le firme JWS |
+| Riporta il `cnf.jkt` del voucher e l'`ath` della prova | Verificare il legame tra voucher e prova DPoP |
+| Normalizza `Digest` e `Content-Digest` | Confrontare il digest con il corpo ricevuto |
+| Legge i claim di `Agid-JWT-Signature` | Controllare che gli header firmati corrispondano |
+| Rende disponibili gli identificativi di correlazione e tracing | Rilevare replay o token scaduti |
+| Pone un limite a ciò che conserva | Prendere decisioni di autorizzazione |
 
-Voucher e token vanno validati nel proprio livello di autenticazione, in un gateway, o in un
-middleware dedicato. Nessun controllo di sicurezza deriva dall'uso di questa libreria.
+Voucher e token vanno validati altrove: nel livello di autenticazione dell'applicazione, in un
+gateway o in un middleware dedicato. Usare questa libreria non fornisce, di per sé, alcuna
+garanzia di sicurezza.
 
 ## Pacchetti
 
 | Pacchetto | Contenuto |
 | --- | --- |
 | `Pdnd.Metadata` | Pipeline di estrazione, indipendente dal framework web |
-| `Pdnd.Metadata.AspNetCore` | Middleware, registrazione DI, accessor, binding per Minimal API |
-| `Pdnd.Metadata.Diagnostics` | Proiezione su `Activity` e metriche, compatibile con OpenTelemetry |
+| `Pdnd.Metadata.AspNetCore` | Middleware, registrazione DI, accessor e binding per le Minimal API |
+| `Pdnd.Metadata.Diagnostics` | Esportazione su `Activity` e metriche, compatibile con OpenTelemetry |
 
 Tutti e tre supportano `net8.0` e `net10.0`.
 
@@ -94,11 +95,11 @@ Tutti e tre supportano `net8.0` e `net10.0`.
 dotnet add package Pdnd.Metadata.AspNetCore
 ```
 
-## Uso
+## Utilizzo
 
-Registrazione dei servizi. Le impostazioni predefinite sono già quelle consigliate: si catturano
-solo gli header dell'allow list, che comprende tracing, correlazione, `Forwarded` e
-`X-Forwarded-For`. Si aggiunge solo ciò che serve in più.
+Per registrare i servizi bastano poche righe. Le impostazioni predefinite sono già quelle
+consigliate: vengono acquisiti solo gli header presenti nell'allow list, che include già tracing,
+correlazione, `Forwarded` e `X-Forwarded-For`. Va aggiunto soltanto ciò che serve in più.
 
 ```csharp
 builder.Services.AddPdndMetadata(options =>
@@ -110,11 +111,11 @@ builder.Services.AddPdndMetadata(options =>
 });
 ```
 
-Middleware, prima del mapping degli endpoint. L'ordine conta in due punti:
+Il middleware va aggiunto prima della mappatura degli endpoint. L'ordine conta in due casi:
 
-- dopo `UseAuthentication()`, altrimenti le chiavi `claim.*` restano vuote;
-- `UseForwardedHeaders()`, se presente, consuma `X-Forwarded-For` e lo sposta in
-  `X-Original-For`, quindi `net.forwarded_for` riflette ciò che resta.
+- va inserito dopo `UseAuthentication()`, altrimenti le chiavi `claim.*` restano vuote;
+- se è presente `UseForwardedHeaders()`, tieni conto che consuma `X-Forwarded-For` e lo sposta in
+  `X-Original-For`: `net.forwarded_for` conterrà quindi solo ciò che rimane.
 
 ```csharp
 app.UseAuthentication();
@@ -122,7 +123,7 @@ app.UsePdndMetadata();
 app.UseAuthorization();
 ```
 
-Lettura in un controller.
+Lettura da un controller:
 
 ```csharp
 [HttpGet("/resource")]
@@ -138,7 +139,7 @@ public IActionResult Get([FromServices] IPdndMetadataAccessor accessor)
 }
 ```
 
-Lettura in una Minimal API, tramite binding del parametro.
+Lettura da una Minimal API, tramite il binding del parametro:
 
 ```csharp
 app.MapGet("/resource", (PdndCallerMetadataParameter pdnd) =>
@@ -153,26 +154,26 @@ app.MapGet("/resource", (PdndCallerMetadataParameter pdnd) =>
 });
 ```
 
-`Snapshot()` restituisce l'intera mappa. È una copia completa, quindi va chiamata una volta e
-riusata, non dentro un ciclo.
+`Snapshot()` restituisce l'intera mappa sotto forma di copia completa: conviene chiamarlo una volta
+sola e riutilizzare il risultato, non invocarlo all'interno di un ciclo.
 
 ## Metadati estratti
 
-Le chiavi seguono uno schema gerarchico. Questi sono i prefissi.
+Le chiavi sono organizzate in modo gerarchico. Questi sono i prefissi principali.
 
 | Prefisso | Origine |
 | --- | --- |
-| `http.*`, `net.*` | Metodo, schema, host, path, indirizzi, porte, e catena forwarded |
-| `security.*` | HTTPS, mTLS (solo thumbprint del certificato), protocollo TLS e HTTP |
+| `http.*`, `net.*` | Metodo, schema, host, path, indirizzi, porte e catena forwarded |
+| `security.*` | HTTPS, mTLS (solo l'impronta del certificato), protocollo TLS e HTTP |
 | `claim.*` | Claim dell'utente autenticato, dopo `UseAuthentication()` |
 | `trace.*`, `correlation.id` | W3C Trace Context e identificativi di richiesta |
 | `pdnd.voucher.*` | Claim del voucher: `client_id`, `purposeId`, `consumerId`, `producerId`, `eserviceId`, `descriptorId`, `cnf.jkt`, `digest` |
-| `pdnd.trackingEvidence.*` | Claim di `Agid-JWT-TrackingEvidence`, inclusi i dati di audit `userID`, `userLocation`, `LoA` |
-| `pdnd.dpop.*` | Prova DPoP, inclusi `htm`, `htu` e `ath` |
-| `pdnd.digest.*`, `pdnd.content_digest.*` | Digest del corpo, formato legacy e RFC 9530 |
-| `pdnd.signature.*` | Claim di `Agid-JWT-Signature`, inclusi gli header firmati |
-| `http.header.*` | Header grezzi, quando la cattura è abilitata |
-| `metadata.truncated` | Presente quando la cattura si è fermata a un limite configurato |
+| `pdnd.trackingEvidence.*` | Claim di `Agid-JWT-TrackingEvidence`, compresi i dati di audit `userID`, `userLocation`, `LoA` |
+| `pdnd.dpop.*` | Prova DPoP, compresi `htm`, `htu` e `ath` |
+| `pdnd.digest.*`, `pdnd.content_digest.*` | Digest del corpo, nel formato legacy e in quello RFC 9530 |
+| `pdnd.signature.*` | Claim di `Agid-JWT-Signature`, compresi gli header firmati |
+| `http.header.*` | Header originali, quando l'acquisizione è abilitata |
+| `metadata.truncated` | Presente quando l'acquisizione si è interrotta per un limite configurato |
 
 <p align="center">
   <picture>
@@ -181,71 +182,72 @@ Le chiavi seguono uno schema gerarchico. Questi sono i prefissi.
   </picture>
 </p>
 
-L'elenco completo, con il claim di origine di ogni chiave, si trova in
+L'elenco completo, con il claim da cui proviene ciascuna chiave, si trova in
 [`spec/PDND_METADATA_SCHEMA.md`](spec/PDND_METADATA_SCHEMA.md).
 
 I nomi dei claim seguono gli esempi del manuale operativo PDND. I voucher attuali identificano
-l'ente fruitore con `consumerId`; `pdnd.voucher.organizationId` resta disponibile per i token che
-ancora lo portano, ma non va usato come identità del chiamante. Allo stesso modo il nome
-dell'header della tracking evidence è `Agid-JWT-TrackingEvidence`; la grafia con il trattino
-`Agid-JWT-Tracking-Evidence` è accettata solo per compatibilità.
+l'ente fruitore con `consumerId`. La chiave `pdnd.voucher.organizationId` resta disponibile per i
+token che la contengono ancora, ma non va usata per identificare il chiamante. Analogamente,
+l'header della tracking evidence si chiama `Agid-JWT-TrackingEvidence`: la variante con il
+trattino, `Agid-JWT-Tracking-Evidence`, è accettata solo per compatibilità.
 
 ## Sicurezza
 
-Tre comportamenti valgono come garanzie, non come impostazioni predefinite da modificare per
-distrazione.
+Tre comportamenti sono garanzie, non impostazioni predefinite da cambiare con leggerezza.
 
-**L'header `Authorization` non viene mai memorizzato in chiaro.** Il voucher viene decodificato e
-se ne estraggono i claim, ma il token non compare in nessuna chiave.
+**L'header `Authorization` non viene mai salvato in chiaro.** Il voucher viene decodificato per
+estrarne i claim, ma il token non compare in nessuna chiave.
 
-**La cattura degli header è opt-in.** `CaptureAllHeaders` vale `false`. Catturare tutto trattiene
-qualunque header di credenziale che la deny list non conosce, quindi abilitarlo è una decisione
-deliberata. La deny list resta come rete di sicurezza e copre `Authorization`,
-`Proxy-Authorization`, `Cookie`, `X-Api-Key`, e altri nomi ricorrenti.
+**L'acquisizione degli header va abilitata esplicitamente.** `CaptureAllHeaders` vale `false`.
+Acquisire tutti gli header significherebbe conservare anche eventuali credenziali che la deny list
+non conosce, per questo abilitarlo dev'essere una scelta consapevole. La deny list resta comunque
+come rete di sicurezza e comprende `Authorization`, `Proxy-Authorization`, `Cookie`, `X-Api-Key` e
+altri nomi ricorrenti.
 
-**I blob firmati non vengono trattenuti.** Tracking evidence, prova DPoP, e `Agid-JWT-Signature`
-vengono decodificati per estrarne i claim, ma il token grezzo non viene salvato salvo richiesta
-esplicita.
+**I token firmati non vengono conservati.** Tracking evidence, prova DPoP e `Agid-JWT-Signature`
+vengono decodificati per estrarne i claim, ma il token originale viene salvato solo se lo si
+richiede esplicitamente.
 
-Il comportamento è fail-soft lungo tutto il percorso. Un header assente, malformato, o troppo
-grande viene ignorato e la richiesta prosegue. Nessun errore di parsing si trasforma in una
-richiesta respinta.
+Ogni passaggio è fail-soft: un header assente, malformato o troppo grande viene ignorato e la
+richiesta prosegue. Un errore di parsing non porta mai al rifiuto della richiesta.
 
-Gli header `Forwarded` e `X-Forwarded-For` sono attendibili solo se impostati da un reverse proxy
-o da un gateway fidato. Su reti aperte sono controllabili dal chiamante e non costituiscono un
-segnale di identità.
+Gli header `Forwarded` e `X-Forwarded-For` sono affidabili solo se impostati da un reverse proxy o
+da un gateway fidato. Su una rete aperta il chiamante può impostarli a piacere, quindi non vanno
+usati per identificarlo.
 
 ## Prestazioni e robustezza
 
-La libreria è pensata per stare nel percorso di ogni richiesta senza pesare e senza mai diventare
-un punto di guasto.
+La libreria è pensata per essere eseguita a ogni richiesta senza appesantirla e senza mai
+diventare un punto di guasto.
 
-- **Non blocca.** Nessun I/O, nessuna attesa sincrona su operazioni asincrone, nessuna chiamata
-  di rete. L'estrazione è un calcolo in memoria; l'estrattore è un singleton senza stato condiviso.
+- **Non blocca.** Non esegue I/O né chiamate di rete e non resta in attesa di operazioni
+  asincrone. L'estrazione è un calcolo in memoria e l'estrattore è un singleton privo di stato
+  condiviso.
 - **Non manda in errore l'applicazione.** Tutto ciò che la libreria esegue prima del resto della
-  pipeline è fail-soft: un errore di estrazione, una configurazione non valida, un logger o un
-  exporter di metriche che falliscono, o un `AddPdndMetadata()` dimenticato lasciano proseguire la
-  richiesta con uno snapshot vuoto. Le eccezioni dei tuoi endpoint invece si propagano normalmente.
-- **Costo contenuto e limitato.** Su una richiesta PDND completa (voucher, prova DPoP, tracking
-  evidence, firma, digest) l'estrazione richiede alcune decine di microsecondi e circa 30 KB di
-  allocazioni. Ogni valore è limitato da `MaxValueLength`, ogni token da `MaxTokenLength`, il
-  numero di header da `MaxHeaderCount`.
-- **L'input ostile non costa di più.** I token malformati vengono rifiutati senza eccezioni, con
-  un costo inferiore a quello di un token valido, quindi non amplificano il carico. Le dimensioni
-  delle metriche hanno un numero massimo di valori distinti.
-- **Nessun costo dove non serve.** `PathExclusions` salta l'estrazione per health check e metriche;
-  ogni decodifica si può spegnere singolarmente.
+  pipeline è fail-soft. Un errore di estrazione, una configurazione non valida, un logger o un
+  exporter di metriche che si guastano, o un `AddPdndMetadata()` dimenticato: in tutti questi casi
+  la richiesta prosegue con uno snapshot vuoto. Le eccezioni sollevate dai tuoi endpoint, invece,
+  si propagano normalmente.
+- **Ha un costo contenuto e limitato.** Su una richiesta PDND completa (voucher, prova DPoP,
+  tracking evidence, firma e digest) l'estrazione richiede qualche decina di microsecondi e circa
+  30 KB di memoria. La lunghezza dei valori è limitata da `MaxValueLength`, quella dei token da
+  `MaxTokenLength` e il numero di header da `MaxHeaderCount`.
+- **Un input malevolo non costa di più.** I token malformati vengono scartati senza sollevare
+  eccezioni e costano meno di un token valido, quindi non possono essere usati per aumentare il
+  carico. Anche le dimensioni delle metriche hanno un numero massimo di valori distinti.
+- **Non costa nulla dove non serve.** Con `PathExclusions` si salta l'estrazione per health check
+  e metriche, e ogni decodifica si può disattivare singolarmente.
 
 ## Osservabilità
 
-`Pdnd.Metadata.Diagnostics` proietta lo snapshot sui tag dell'attività corrente e su un contatore
+`Pdnd.Metadata.Diagnostics` riporta lo snapshot nei tag dell'attività corrente e in un contatore
 di richieste. Non dipende da alcun pacchetto OpenTelemetry: usa `Activity` e `Meter` della libreria
-di base, che l'SDK consuma sottoscrivendo il meter.
+di base, che l'SDK raccoglie una volta registrato il meter.
 
-I tag vengono scritti sull'`Activity` corrente, cioè quella della richiesta creata da ASP.NET
-Core: per vederli nelle tracce serve la strumentazione ASP.NET Core di OpenTelemetry. La libreria
-non crea un'`ActivitySource` propria, quindi `AddSource(PdndInstrumentation.ActivitySourceName)`
-non è necessario.
+I tag vengono scritti sull'`Activity` corrente, ovvero quella che ASP.NET Core crea per la
+richiesta: per vederli nelle tracce serve quindi la strumentazione ASP.NET Core di OpenTelemetry.
+La libreria non crea una propria `ActivitySource`, per cui
+`AddSource(PdndInstrumentation.ActivitySourceName)` non serve.
 
 ```bash
 dotnet add package Pdnd.Metadata.Diagnostics
@@ -260,13 +262,14 @@ app.UsePdndMetadata();
 app.UsePdndDiagnostics();
 ```
 
-Le dimensioni del contatore `pdnd.requests` sono limitate a tre claim a bassa cardinalità:
-`consumerId` (con ripiego su `organizationId` per i token legacy), `purposeId` e `client_id`.
-Identificativi come `jti` restano tag di traccia e non diventano dimensioni di metrica.
+Il contatore `pdnd.requests` ha solo tre dimensioni, scelte tra i claim con pochi valori distinti:
+`consumerId` (oppure `organizationId` per i token legacy), `purposeId` e `client_id`.
+Identificativi come `jti` restano tag delle tracce e non diventano dimensioni delle metriche.
 
-Quei claim provengono da un voucher non ancora verificato, quindi chiunque può valorizzarli.
-Ogni dimensione registra al massimo `MaxDistinctValuesPerDimension` valori distinti (predefinito
-`100`); i successivi confluiscono in `other`. Le dimensioni si possono anche disattivare.
+Questi claim provengono da un voucher non ancora verificato, quindi chiunque può valorizzarli a
+piacere. Per questo ogni dimensione registra al massimo `MaxDistinctValuesPerDimension` valori
+distinti (`100` per impostazione predefinita); i successivi vengono raggruppati sotto `other`. Le
+dimensioni si possono anche disattivare del tutto.
 
 ```csharp
 builder.Services.AddPdndDiagnostics(o =>
@@ -278,10 +281,10 @@ builder.Services.AddPdndDiagnostics(o =>
 
 ## Specifica e vettori di conformità
 
-La directory [`spec/`](spec/) contiene il vocabolario di chiavi canoniche e un corpus di vettori di
-conformità in formato neutro rispetto al linguaggio. Ogni vettore associa un insieme di header in
-ingresso alle chiavi che un'implementazione conforme deve produrre, e a quelle che non deve
-produrre.
+La cartella [`spec/`](spec/) contiene il vocabolario delle chiavi canoniche e una raccolta di
+vettori di conformità, in un formato indipendente dal linguaggio. Ogni vettore associa un insieme
+di header in ingresso alle chiavi che un'implementazione conforme deve produrre e a quelle che non
+deve produrre.
 
 <p align="center">
   <picture>
@@ -290,47 +293,48 @@ produrre.
   </picture>
 </p>
 
-Il corpus viene eseguito dalla suite di test di questa libreria e da una seconda implementazione
-di riferimento in Python, scritta dalla specifica e non portata dal C#. La seconda implementazione
-non si pubblica e non ha utenti: serve a dimostrare che la specifica è completa, e a scoprire dove
-non lo è.
+I vettori vengono eseguiti sia dalla suite di test di questa libreria sia da una seconda
+implementazione di riferimento in Python, scritta a partire dalla specifica e non tradotta dal C#.
+Questa seconda implementazione non viene pubblicata e non ha utenti: serve a dimostrare che la
+specifica è completa e a scoprire dove non lo è.
 
-Il gruppo `adversarial` è la parte più utile: copre token a quattro segmenti, caratteri Base64
-standard dove serve Base64Url, UTF-8 non valido che un decoder permissivo sostituisce in silenzio,
-e `alg: none`.
+Il gruppo `adversarial` è la parte più preziosa. Comprende token a quattro segmenti, caratteri
+Base64 standard dove è richiesto il Base64Url, sequenze UTF-8 non valide che un decoder permissivo
+sostituirebbe senza segnalarlo e token con `alg: none`.
 
 ## Configurazione
 
 | Opzione | Predefinito | Effetto |
 | --- | --- | --- |
-| `CaptureAllHeaders` | `false` | Cattura di tutti gli header, soggetta alla deny list |
-| `HeaderAllowList` | insieme minimo | Header catturati quando la cattura non è globale |
-| `HeaderDenyList` | credenziali note | Header mai catturati in chiaro |
+| `CaptureAllHeaders` | `false` | Acquisisce tutti gli header, esclusi quelli della deny list |
+| `HeaderAllowList` | insieme minimo | Header acquisiti quando `CaptureAllHeaders` è disattivato |
+| `HeaderDenyList` | credenziali note | Header che non vengono mai salvati in chiaro |
 | `MaxHeaderCount` | `64` | Numero massimo di header distinti |
-| `MaxHeaderValuesPerName` | `10` | Valori massimi per nome di header |
-| `MaxValueLength` | `2048` | Lunghezza massima di un valore, oltre la quale viene troncato |
+| `MaxHeaderValuesPerName` | `10` | Numero massimo di valori per lo stesso header |
+| `MaxValueLength` | `2048` | Lunghezza massima di un valore; oltre, il valore viene troncato |
 | `MaxTokenLength` | `16384` | Lunghezza massima di un token da decodificare |
 | `PathExclusions` | vuoto | Path esclusi dall'estrazione, confrontati per segmento: `/health` non esclude `/healthcare` |
-| `CaptureRawTrackingEvidenceHeader`, `CaptureRawDpopHeader`, `CaptureRawSignatureHeader` | `false` | Cattura dei blob firmati grezzi, sconsigliata in produzione |
-| `CaptureRawDigestHeader` | `true` | Cattura grezza di `Digest` e `Content-Digest`, che non sono credenziali |
-| `Parse*`, `PromoteTracingHeaders`, `NormalizeForwardedHeaders` | `true` | Ogni decodifica si può spegnere singolarmente; le altre non ne risentono |
+| `CaptureRawTrackingEvidenceHeader`, `CaptureRawDpopHeader`, `CaptureRawSignatureHeader` | `false` | Conserva i token firmati originali; sconsigliato in produzione |
+| `CaptureRawDigestHeader` | `true` | Conserva `Digest` e `Content-Digest` originali, che non sono credenziali |
+| `Parse*`, `PromoteTracingHeaders`, `NormalizeForwardedHeaders` | `true` | Ogni decodifica si può disattivare singolarmente, senza effetti sulle altre |
 
 Le opzioni di `Pdnd.Metadata.Diagnostics` si registrano con `AddPdndDiagnostics()`.
 
 | Opzione | Predefinito | Effetto |
 | --- | --- | --- |
-| `IncludeConsumerDimensions` | `true` | Dimensiona il contatore per consumer, finalità e client |
+| `IncludeConsumerDimensions` | `true` | Suddivide il contatore per ente fruitore, finalità e client |
 | `MaxDistinctValuesPerDimension` | `100` | Valori distinti per dimensione; i successivi diventano `other` |
 
 ## Compatibilità
 
-La versione 2.0.0 introduce due modifiche non compatibili. `CaptureAllHeaders` passa a `false`, e
-la proprietà `Items` è sostituita dal metodo `Snapshot()`, mantenuta come obsoleta fino alla 3.0.0.
+La versione 2.0.0 ha introdotto due modifiche non compatibili: `CaptureAllHeaders` vale ora `false`
+e la proprietà `Items` è stata sostituita dal metodo `Snapshot()`. `Items` resta disponibile, come
+obsoleta, fino alla 3.0.0.
 
-Nella versione 2.1.0 la dimensione del contatore `pdnd.requests` che identifica l'ente fruitore
-si chiama `pdnd.voucher.consumerId` invece di `pdnd.voucher.organizationId`: i voucher PDND attuali
-non portano `organizationId`, quindi la vecchia dimensione valeva sempre `unknown`. Le dashboard
-che la usano vanno aggiornate. Il dettaglio è nel [changelog](CHANGELOG.md).
+Con la versione 2.1.0 la dimensione del contatore `pdnd.requests` che identifica l'ente fruitore si
+chiama `pdnd.voucher.consumerId` anziché `pdnd.voucher.organizationId`. I voucher PDND attuali non
+contengono `organizationId`, quindi la vecchia dimensione valeva sempre `unknown`. Eventuali
+dashboard che la utilizzano vanno aggiornate. I dettagli sono nel [changelog](CHANGELOG.md).
 
 ## Documentazione ufficiale PDND
 
@@ -344,17 +348,18 @@ che la usano vanno aggiornate. Il dettaglio è nel [changelog](CHANGELOG.md).
 
 ## Contribuire
 
-Fork, modifica, commit, pull request. I messaggi di commit seguono
-[Conventional Commits](https://www.conventionalcommits.org/) e sono verificati in CI.
+Il flusso è quello consueto: fork, modifiche, commit e pull request. I messaggi di commit seguono
+le [Conventional Commits](https://www.conventionalcommits.org/) e vengono controllati in CI.
 
 ```bash
 dotnet test --solution Pdnd.Metadata.slnx
 ```
 
-I vettori di conformità valgono più della prosa. Se hai la forma di un token proveniente da
-un'integrazione reale che il corpus non copre, aprine uno con i valori sostituiti da equivalenti
-sintetici. I vettori che documentano un caso gestito male da questa implementazione sono
-particolarmente benvenuti, e vengono accettati come test che falliscono prima della correzione.
+I vettori di conformità sono più utili di qualsiasi descrizione. Se hai un token proveniente da
+un'integrazione reale con una forma che la raccolta non copre ancora, proponi un nuovo vettore
+sostituendo i valori con dati fittizi. Sono particolarmente graditi i vettori che mettono in luce
+un caso gestito male da questa implementazione: vengono accolti come test che falliscono, in attesa
+della correzione.
 
 ## Autore e maintainer
 
@@ -365,7 +370,7 @@ particolarmente benvenuti, e vengono accettati come test che falliscono prima de
 
 Per qualsiasi informazione: francesco.delre[at]protonmail.com.
 
-Le vulnerabilità vanno segnalate secondo la [security policy](SECURITY.md), non tramite issue
+Le vulnerabilità vanno segnalate seguendo la [security policy](SECURITY.md), non aprendo issue
 pubbliche.
 
 ## Licenza
