@@ -77,8 +77,11 @@ public static class JwtJsonReader
                                 ? property.Value.GetString() ?? string.Empty
                                 : property.Value.GetRawText();
 
+                            // Trimmed like every other encoding: a padded name such as
+                            // " authorization" is the same header, and must meet the same
+                            // credential checks rather than slip past them.
                             result.Add(new KeyValuePair<string, string>(
-                                property.Name.ToLowerInvariant(),
+                                property.Name.Trim().ToLowerInvariant(),
                                 headerValue));
                         }
                     }
@@ -86,7 +89,7 @@ public static class JwtJsonReader
                     {
                         var name = element.GetString();
                         if (!string.IsNullOrWhiteSpace(name))
-                            result.Add(new KeyValuePair<string, string>(name!.ToLowerInvariant(), string.Empty));
+                            result.Add(new KeyValuePair<string, string>(name!.Trim().ToLowerInvariant(), string.Empty));
                     }
                 }
 

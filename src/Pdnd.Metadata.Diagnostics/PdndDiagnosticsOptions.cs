@@ -42,6 +42,14 @@ public sealed class PdndDiagnosticsOptions
     /// <remarks>
     /// The bound is approximate under concurrency: a few requests racing on the last free slot
     /// may each claim it. It never grows without limit.
+    /// <para>
+    /// The first values seen keep their slots for the life of the options instance. Because the
+    /// claims are not verified, a burst of forged identifiers right after startup can fill every
+    /// slot, after which genuine consumers are recorded as <see cref="OverflowValue"/> until the
+    /// process restarts. Enable the dimensions where vouchers are validated before they reach the
+    /// service, raise the bound to cover the expected consumers, or disable the dimensions with
+    /// <see cref="IncludeConsumerDimensions"/>.
+    /// </para>
     /// </remarks>
     public int MaxDistinctValuesPerDimension
     {

@@ -260,7 +260,12 @@ Identifiers such as `jti` remain trace tags and do not become metric dimensions.
 
 Those claims come from a voucher that has not been verified yet, so any caller can set them.
 Each dimension records at most `MaxDistinctValuesPerDimension` distinct values (default `100`);
-later values are recorded as `other`. Dimensions can also be switched off.
+later values are recorded as `other`.
+
+There is a catch: the first values seen keep their slots until the process restarts. A burst of
+forged identifiers right after startup can fill them, and genuine consumers are then recorded as
+`other`. Enable the dimensions only where vouchers are validated before they reach the service
+(for example by a gateway), or raise the bound, or switch the dimensions off.
 
 ```csharp
 builder.Services.AddPdndDiagnostics(o =>

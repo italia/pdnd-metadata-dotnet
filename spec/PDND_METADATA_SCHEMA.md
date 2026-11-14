@@ -249,7 +249,7 @@ Reference: [AgID – Linee Guida sull'interoperabilità tecnica](https://www.agi
 | `pdnd.signature.iat` | `iat` | Claims | Issued at (epoch seconds) |
 | `pdnd.signature.exp` | `exp` | Claims | Expiration (epoch seconds) |
 | `pdnd.signature.signed_headers` | `signed_headers` | Claims | Comma-separated list of signed header names, lowercased. Not a digest: body integrity is carried separately by `Digest` or `Content-Digest` and verified as a distinct step. |
-| `pdnd.signature.signed_header.<name>` | `signed_headers[]` | Claims | Value of each individual signed header, when the claim carries values. Header names are lowercased. Never produced for `authorization`, `proxy-authorization`, `cookie`, or `set-cookie`, whose signed value is the credential itself, nor for names longer than 256 characters; implementations with a configurable deny list also withhold the names it covers. The name still appears in `pdnd.signature.signed_headers`. |
+| `pdnd.signature.signed_header.<name>` | `signed_headers[]` | Claims | Value of each individual signed header, when the claim carries values. Header names are trimmed and lowercased. Never produced for `authorization`, `proxy-authorization`, `cookie`, or `set-cookie`, whose signed value is the credential itself, nor for names longer than 256 characters; implementations with a configurable deny list also withhold the names it covers. The name still appears in `pdnd.signature.signed_headers`. |
 
 ---
 

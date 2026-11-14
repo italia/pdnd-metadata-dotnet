@@ -240,10 +240,17 @@ public sealed class PdndMetadataOptions
         if (string.IsNullOrEmpty(prefix))
             return false;
 
-        // A trailing slash on the prefix carries no meaning: "/health/" behaves as "/health".
-        var trimmed = prefix.Length > 1 ? prefix.TrimEnd('/') : prefix;
-        if (trimmed.Length == 0 || trimmed == "/")
+        // "/" is the root and excludes every path, as it always has.
+        if (prefix == "/")
             return path.StartsWith('/');
+
+        // A trailing slash on the prefix carries no meaning: "/health/" behaves as "/health".
+        var trimmed = prefix.TrimEnd('/');
+
+        // A prefix made only of slashes ("//") has no segment to match. Collapsing it to the
+        // root would silently exclude every request, so it keeps its literal 2.0.0 meaning.
+        if (trimmed.Length == 0)
+            return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
 
         if (!path.StartsWith(trimmed, StringComparison.OrdinalIgnoreCase))
             return false;

@@ -174,6 +174,40 @@ public sealed class FailSoftTests
     }
 
     [Fact]
+    public async Task UsePdndMetadata_ResolvesServicesPerRequest_LikeConventionalMiddleware()
+    {
+        // Multi-tenant containers register services only in the tenant's container, which the
+        // request sees through RequestServices. The root provider knows nothing about them.
+        using var root = new ServiceCollection().AddLogging().BuildServiceProvider();
+
+        var tenantServices = new ServiceCollection();
+        tenantServices.AddSingleton<IPdndMetadataExtractor, CustomExtractor>();
+        tenantServices.AddPdndMetadata(o => o.PathExclusions.Add("/excluded"));
+        using var tenant = tenantServices.BuildServiceProvider();
+
+        var app = new ApplicationBuilder(root);
+        app.UsePdndMetadata();
+        app.Run(_ => Task.CompletedTask);
+        var pipeline = app.Build();
+
+        var excluded = new DefaultHttpContext { RequestServices = tenant };
+        excluded.Request.Path = "/excluded/x";
+        await pipeline(excluded);
+        excluded.Items.ContainsKey(PdndMetadataAspNetCoreConstants.HttpContextItemKey)
+            .Should().BeFalse("the tenant's options must apply");
+
+        var included = new DefaultHttpContext { RequestServices = tenant };
+        included.Request.Path = "/api";
+        included.Request.Headers.Authorization = "Bearer " + Base64UrlTestHelper.Jwt(
+            "{\"alg\":\"RS256\"}", "{\"consumerId\":\"c-1\"}", "sig");
+        await pipeline(included);
+
+        // CustomExtractor returns an empty snapshot: the tenant's extractor was used, not the default.
+        included.Items[PdndMetadataAspNetCoreConstants.HttpContextItemKey].Should().BeOfType<PdndCallerMetadata>()
+            .Which.GetFirstValue(PdndMetadataKeys.PdndVoucherConsumerId).Should().BeNull();
+    }
+
+    [Fact]
     public void AddPdndMetadata_IsIdempotent_AndKeepsACustomExtractor()
     {
         var services = new ServiceCollection();
@@ -370,6 +404,28 @@ public sealed class FailSoftTests
         md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaders).Should().Contain(name.ToLowerInvariant(),
             "the name stays listed; only the value is withheld");
         md.Snapshot().Values.SelectMany(items => items).Should().NotContain(i => i.Value.Contains(voucher));
+    }
+
+    [Theory]
+    [InlineData(" authorization")]
+    [InlineData("authorization ")]
+    [InlineData("\tAuthorization")]
+    [InlineData(" x-api-key")]
+    public void SignedCredentialHeaders_CannotBeSmuggledWithPadding(string paddedName)
+    {
+        var signature = Base64UrlTestHelper.Jwt(
+            "{\"alg\":\"RS256\"}",
+            "{\"signed_headers\":[{\"" + paddedName.Replace("\t", "\\t") + "\":\"secret-credential\"}]}",
+            "sig");
+
+        var md = new DefaultPdndMetadataExtractor().Extract(new PdndRequestContext
+        {
+            Method = "POST",
+            Headers = new[] { new PdndRequestHeader("Agid-JWT-Signature", new[] { signature }) }
+        }, new PdndMetadataOptions());
+
+        md.Snapshot().Values.SelectMany(items => items).Should().NotContain(i => i.Value == "secret-credential");
+        md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaders).Should().Be(paddedName.Trim().ToLowerInvariant());
     }
 
     [Fact]

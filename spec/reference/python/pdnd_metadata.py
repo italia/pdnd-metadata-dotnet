@@ -150,9 +150,9 @@ def _signed_headers(value: Any) -> list[tuple[str, str]] | None:
                     if not name or not name.strip():
                         continue
                     rendered = item if isinstance(item, str) else json.dumps(item, separators=(",", ":"))
-                    pairs.append((name.lower(), rendered))
+                    pairs.append((name.strip().lower(), rendered))
             elif isinstance(element, str) and element.strip():
-                pairs.append((element.lower(), ""))
+                pairs.append((element.strip().lower(), ""))
     elif isinstance(value, str):
         for name in value.split(","):
             name = name.strip()

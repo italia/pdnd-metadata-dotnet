@@ -268,8 +268,13 @@ Identificativi come `jti` restano tag delle tracce e non diventano dimensioni de
 
 Questi claim provengono da un voucher non ancora verificato, quindi chiunque può valorizzarli a
 piacere. Per questo ogni dimensione registra al massimo `MaxDistinctValuesPerDimension` valori
-distinti (`100` per impostazione predefinita); i successivi vengono raggruppati sotto `other`. Le
-dimensioni si possono anche disattivare del tutto.
+distinti (`100` per impostazione predefinita); i successivi vengono raggruppati sotto `other`.
+
+C'è però un limite da conoscere: i primi valori osservati occupano i posti disponibili finché il
+processo non viene riavviato. Una raffica di identificativi falsi subito dopo l'avvio può quindi
+riempirli, e da quel momento i fruitori reali finiscono sotto `other`. Conviene attivare le
+dimensioni solo se i voucher vengono validati prima di raggiungere il servizio (per esempio da un
+gateway), oppure alzare il limite o disattivare del tutto le dimensioni.
 
 ```csharp
 builder.Services.AddPdndDiagnostics(o =>

@@ -38,7 +38,9 @@ public static class PdndAuthorization
         if (string.IsNullOrWhiteSpace(authorizationHeader))
             return false;
 
-        var value = authorizationHeader.TrimStart();
+        // No leading trim: TryGetBearerToken keeps exactly its 2.0.0 contract, under which
+        // " Bearer abc" is not a Bearer token. HTTP servers strip that whitespace already.
+        var value = authorizationHeader;
 
         // The scheme must be followed by at least one space: "Bearerabc" is not a Bearer token.
         if (value.Length <= scheme.Length ||

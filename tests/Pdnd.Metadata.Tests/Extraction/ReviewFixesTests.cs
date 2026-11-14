@@ -127,6 +127,28 @@ public sealed class ReviewFixesTests
     }
 
     [Theory]
+    [InlineData("//", "/api/resource", false)]
+    [InlineData("//", "//double", true)]
+    [InlineData("///", "/api/resource", false)]
+    [InlineData("/", "/api/resource", true)]
+    public void IsPathExcluded_SlashOnlyPrefixes_KeepTheir2_0_0Meaning(string exclusion, string path, bool expected)
+    {
+        // "//" collapsed to the root would silently exclude every request.
+        var options = new PdndMetadataOptions();
+        options.PathExclusions.Add(exclusion);
+
+        options.IsPathExcluded(path).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(" Bearer abc")]
+    [InlineData("\tBearer abc")]
+    public void TryGetBearerToken_KeepsIts2_0_0Contract_OnLeadingWhitespace(string header)
+    {
+        PdndAuthorization.TryGetBearerToken(header, out _).Should().BeFalse();
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData(null)]
     public void IsPathExcluded_IgnoresEmptyEntries_RatherThanExcludingEverything(string? exclusion)

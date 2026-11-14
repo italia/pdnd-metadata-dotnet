@@ -48,6 +48,11 @@ The dimensions come from a voucher that has not been verified at this point, so 
 them. Each dimension records at most `MaxDistinctValuesPerDimension` distinct values; values first
 seen after that are recorded as `other`.
 
+The first values seen keep their slots until the process restarts, so a burst of forged
+identifiers right after startup can fill them and turn genuine consumers into `other`. Enable the
+dimensions where vouchers are validated before they reach the service, raise the bound, or turn
+them off.
+
 | Option | Default | Effect |
 | --- | --- | --- |
 | `IncludeConsumerDimensions` | `true` | When `false`, the counter carries no dimensions |

@@ -79,15 +79,22 @@ can affect consumers is the renamed counter dimension, described under Changed.
     `MeterListener` or exporter callback failed the request;
   - the Minimal API and MVC binders used `GetRequiredService`, so an endpoint binding the
     snapshot answered 500 when `AddPdndMetadata()` was missing. They now fall back to the
-    snapshot in `HttpContext.Items`, then to an empty one;
+    snapshot in `HttpContext.Items`, then to an empty one; a custom `IPdndMetadataAccessor` that
+    throws falls back the same way instead of producing a 500;
   - `UsePdndMetadata()` without `AddPdndMetadata()` failed every request while resolving the
-    middleware's services. It now runs with the defaults and logs a warning once at startup;
+    middleware's services. The extractor and the options are still resolved per request from
+    `RequestServices`, so scoped and per-tenant registrations work as before; when no extractor
+    is registered, the default one and the default options are used and a warning is logged once;
   - a logger that throws while reporting an extraction failure propagated out of the middleware.
   Exceptions thrown by the rest of the pipeline are still propagated: they are not ours to hide.
 - A recurring extraction failure logged a warning with a stack trace on every request. The first
   occurrence is logged as a warning, later ones at debug level without the exception.
 - Truncation could split a UTF-16 surrogate pair, leaving invalid text for log sinks and
   exporters. `http.path` and `http.host` were not bounded by `MaxValueLength`.
+- In a `PdndRequestContext` built by hand, a header name repeated across several entries now
+  contributes all its values, as it would on the wire; previously only the first entry was seen,
+  even when it had no values. Token headers still use their first non-empty value. Contexts built
+  by the ASP.NET Core integration never repeat a name, so they are unaffected.
 
 ### Performance
 
@@ -113,12 +120,17 @@ can affect consumers is the renamed counter dimension, described under Changed.
   guarantee that the raw `Authorization` value is never stored. Values of `authorization`,
   `proxy-authorization`, `cookie`, and `set-cookie` are now always withheld, and the default
   extractor also withholds every name in `HeaderDenyList`. The names remain listed in
-  `pdnd.signature.signed_headers`. Names longer than 256 characters no longer become keys.
+  `pdnd.signature.signed_headers`. Names are trimmed before these checks, so a padded name such
+  as `" authorization"` is treated as the header it is. Names longer than 256 characters no
+  longer become keys.
 - The request counter in `Pdnd.Metadata.Diagnostics` used voucher claims as dimensions without
   any bound. The voucher is not verified at that point, so forged tokens with random
   identifiers could create an unbounded number of time series in the metrics backend. Each
   dimension now records at most `PdndDiagnosticsOptions.MaxDistinctValuesPerDimension` distinct
-  values (default 100); later values are recorded as `other`.
+  values (default 100); later values are recorded as `other`. The first values seen keep their
+  slots for the life of the process, so a burst of forged identifiers right after startup can
+  fill them and turn genuine consumers into `other` until restart. Enable the dimensions where
+  vouchers are validated before reaching the service, raise the bound, or turn them off.
 
 ### Added
 
@@ -138,7 +150,7 @@ can affect consumers is the renamed counter dimension, described under Changed.
 
 ### Infrastructure
 
-- Test suite extended from 240 to 355 tests per target framework. New coverage includes every
+- Test suite extended from 240 to 366 tests per target framework. New coverage includes every
   `Parse*` and `CaptureRaw*` switch when turned off or on, `PromoteTracingHeaders` and
   `NormalizeForwardedHeaders`, `MaxHeaderValuesPerName`, the middleware's path exclusion and
   fail-soft paths, Minimal API and MVC binding, the full `AddPdndMetadata()` /
