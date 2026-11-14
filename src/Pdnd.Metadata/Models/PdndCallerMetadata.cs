@@ -144,4 +144,32 @@ public sealed class PdndCallerMetadata
 
         return clone;
     }
+
+    /// <summary>Removes every item, keeping the allocated capacity for reuse.</summary>
+    internal void Clear()
+    {
+        lock (_lock)
+            _items.Clear();
+    }
+
+    /// <summary>
+    /// Adds every item to <paramref name="target"/>, passing values longer than
+    /// <paramref name="maxValueLength"/> through <paramref name="truncate"/>. Items within the
+    /// bound are added as the same instance, so the common case allocates nothing.
+    /// </summary>
+    internal void CopyTo(PdndCallerMetadata target, int maxValueLength, Func<string, int, string> truncate)
+    {
+        lock (_lock)
+        {
+            foreach (var kvp in _items)
+            {
+                foreach (var item in kvp.Value)
+                {
+                    target.Add(item.Value.Length <= maxValueLength
+                        ? item
+                        : item with { Value = truncate(item.Value, maxValueLength) });
+                }
+            }
+        }
+    }
 }

@@ -1,6 +1,8 @@
 // (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
+using System.Buffers;
 using System.Text;
+using System.Text.Unicode;
 
 namespace Pdnd.Metadata.Extraction.Jwt;
 
@@ -63,11 +65,20 @@ public static class JwtDecoder
         return true;
     }
 
-    // The shared Encoding.UTF8 instance substitutes U+FFFD instead of throwing, which turns
-    // malformed input into a mangled string that only fails later, during JSON parsing.
-    // This instance rejects it at the point where the problem actually is.
-    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+    // Buffers up to this size live on the stack; larger tokens (bounded by MaxTokenLength) rent
+    // from the shared pool. Either way no intermediate string or array is allocated.
+    private const int StackLimit = 1024;
 
+    /// <summary>
+    /// Decodes one Base64Url segment into a UTF-8 string, rejecting anything that is not strict
+    /// Base64Url or not valid UTF-8.
+    /// </summary>
+    /// <remarks>
+    /// Exception-free by design. The previous implementation relied on FormatException and
+    /// DecoderFallbackException to reject bad input, which made malformed tokens, the input an
+    /// attacker controls, the expensive path. Decoding also used to translate the alphabet through
+    /// two string replacements and a padded copy before converting.
+    /// </remarks>
     private static bool TryBase64UrlDecodeToUtf8(string base64Url, out string utf8)
     {
         utf8 = string.Empty;
@@ -75,73 +86,74 @@ public static class JwtDecoder
         if (string.IsNullOrEmpty(base64Url))
             return false;
 
-        if (!TryBase64UrlDecode(base64Url, out var bytes))
+        var length = base64Url.Length;
+
+        // A length of 1 modulo 4 cannot come from any byte sequence.
+        if (length % 4 == 1)
             return false;
+
+        var paddedLength = (length + 3) & ~3;
+
+        char[]? rentedChars = null;
+        var chars = paddedLength <= StackLimit
+            ? stackalloc char[StackLimit]
+            : rentedChars = ArrayPool<char>.Shared.Rent(paddedLength);
+
+        byte[]? rentedBytes = null;
+        var maxBytes = paddedLength / 4 * 3;
+        var bytes = maxBytes <= StackLimit
+            ? stackalloc byte[StackLimit]
+            : rentedBytes = ArrayPool<byte>.Shared.Rent(maxBytes);
 
         try
         {
-            utf8 = StrictUtf8.GetString(bytes);
+            // Translate Base64Url to standard Base64, rejecting anything outside the Base64Url
+            // alphabet. Convert tolerates whitespace and standard '+' and '/', which would let
+            // non-Base64Url input decode successfully.
+            for (var i = 0; i < length; i++)
+            {
+                var c = base64Url[i];
+                switch (c)
+                {
+                    case >= 'A' and <= 'Z':
+                    case >= 'a' and <= 'z':
+                    case >= '0' and <= '9':
+                        chars[i] = c;
+                        break;
+                    case '-':
+                        chars[i] = '+';
+                        break;
+                    case '_':
+                        chars[i] = '/';
+                        break;
+                    default:
+                        return false;
+                }
+            }
+
+            for (var i = length; i < paddedLength; i++)
+                chars[i] = '=';
+
+            if (!Convert.TryFromBase64Chars(chars[..paddedLength], bytes, out var written))
+                return false;
+
+            var decoded = bytes[..written];
+
+            // The shared Encoding.UTF8 instance substitutes U+FFFD for invalid sequences, which
+            // turns malformed input into a mangled string that only fails later, during JSON
+            // parsing. Validating first rejects it where the problem actually is.
+            if (!Utf8.IsValid(decoded))
+                return false;
+
+            utf8 = Encoding.UTF8.GetString(decoded);
             return true;
         }
-        catch (DecoderFallbackException)
+        finally
         {
-            return false;
-        }
-    }
-
-    private static bool TryBase64UrlDecode(string input, out byte[] result)
-    {
-        result = Array.Empty<byte>();
-
-        if (string.IsNullOrEmpty(input))
-            return false;
-
-        // Reject anything outside the Base64Url alphabet before translating. Convert.FromBase64String
-        // tolerates embedded whitespace and standard-Base64 '+' and '/', which would let
-        // non-Base64Url input decode successfully.
-        foreach (var c in input)
-        {
-            var isAllowed = c is >= 'A' and <= 'Z'
-                or >= 'a' and <= 'z'
-                or >= '0' and <= '9'
-                or '-' or '_';
-
-            if (!isAllowed)
-                return false;
-        }
-
-        // Convert Base64Url to standard Base64
-        var s = input.Replace('-', '+').Replace('_', '/');
-
-        // Add padding based on length
-        // Valid Base64 lengths are: 0, 2, 3 (mod 4) - case 1 is invalid
-        switch (s.Length % 4)
-        {
-            case 0:
-                // No padding needed
-                break;
-            case 2:
-                s += "==";
-                break;
-            case 3:
-                s += "=";
-                break;
-            case 1:
-                // Invalid Base64 length - cannot produce length % 4 == 1 from valid encoding
-                return false;
-            default:
-                return false;
-        }
-
-        try
-        {
-            result = Convert.FromBase64String(s);
-            return true;
-        }
-        catch (FormatException)
-        {
-            // Invalid Base64 characters
-            return false;
+            if (rentedChars is not null)
+                ArrayPool<char>.Shared.Return(rentedChars);
+            if (rentedBytes is not null)
+                ArrayPool<byte>.Shared.Return(rentedBytes);
         }
     }
 }

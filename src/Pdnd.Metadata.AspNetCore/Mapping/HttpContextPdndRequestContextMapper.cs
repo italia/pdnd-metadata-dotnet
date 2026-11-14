@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Primitives;
 using Pdnd.Metadata.RequestContext;
 
 namespace Pdnd.Metadata.AspNetCore.Mapping;
@@ -22,9 +23,15 @@ public static class HttpContextPdndRequestContextMapper
         var req = httpContext.Request;
         var conn = httpContext.Connection;
 
-        var headers = req.Headers
-            .Select(h => new PdndRequestHeader(h.Key, h.Value.Where(v => v is not null).ToArray()!))
-            .ToArray();
+        var headers = new PdndRequestHeader[req.Headers.Count];
+        var index = 0;
+        foreach (var header in req.Headers)
+            headers[index++] = new PdndRequestHeader(header.Key, NonNullValues(header.Value));
+
+        // The header count is read before enumeration; guard against a collection that does not
+        // report it exactly rather than leave null entries behind.
+        if (index != headers.Length)
+            Array.Resize(ref headers, index);
 
         var tracing = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -95,5 +102,35 @@ public static class HttpContextPdndRequestContextMapper
             SecurityHints = security,
             TracingHints = tracing
         };
+    }
+
+    /// <summary>
+    /// Copies the header values, dropping null entries, without LINQ. Almost every header has a
+    /// single non-null value, which takes the first branch.
+    /// </summary>
+    private static string[] NonNullValues(StringValues values)
+    {
+        if (values.Count == 1)
+            return values[0] is { } single ? new[] { single } : Array.Empty<string>();
+
+        var nonNull = 0;
+        foreach (var value in values)
+        {
+            if (value is not null)
+                nonNull++;
+        }
+
+        if (nonNull == 0)
+            return Array.Empty<string>();
+
+        var result = new string[nonNull];
+        var i = 0;
+        foreach (var value in values)
+        {
+            if (value is not null)
+                result[i++] = value;
+        }
+
+        return result;
     }
 }

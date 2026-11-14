@@ -210,6 +210,26 @@ the request proceeds. No parsing error turns into a rejected request.
 The `Forwarded` and `X-Forwarded-For` headers are trustworthy only when set by a reverse proxy or a
 trusted gateway. On open networks the caller controls them, and they are not an identity signal.
 
+## Performance and robustness
+
+The library is meant to sit on every request's path without weighing on it and without ever
+becoming a point of failure.
+
+- **It does not block.** No I/O, no synchronous waits on asynchronous work, no network calls.
+  Extraction is an in-memory computation; the extractor is a singleton with no shared state.
+- **It does not fail your application.** Everything the library runs ahead of the rest of the
+  pipeline is fail-soft: an extraction error, an invalid configuration, a failing logger or metrics
+  exporter, or a forgotten `AddPdndMetadata()` all let the request proceed with an empty snapshot.
+  Exceptions from your own endpoints still propagate as usual.
+- **Its cost is small and bounded.** On a full PDND request (voucher, DPoP proof, tracking
+  evidence, signature, digest) extraction takes a few tens of microseconds and about 30 KB of
+  allocations. Every value is bounded by `MaxValueLength`, every token by `MaxTokenLength`, and the
+  number of headers by `MaxHeaderCount`.
+- **Hostile input costs no more.** Malformed tokens are rejected without exceptions, for less than
+  a valid token costs, so they do not amplify load. Metric dimensions have a cap on distinct values.
+- **No cost where it is not needed.** `PathExclusions` skips extraction for health checks and
+  metrics endpoints, and each decoding step can be switched off on its own.
+
 ## Observability
 
 `Pdnd.Metadata.Diagnostics` projects the snapshot onto the current activity tags and onto a request

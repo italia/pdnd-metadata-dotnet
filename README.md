@@ -215,6 +215,27 @@ Gli header `Forwarded` e `X-Forwarded-For` sono attendibili solo se impostati da
 o da un gateway fidato. Su reti aperte sono controllabili dal chiamante e non costituiscono un
 segnale di identità.
 
+## Prestazioni e robustezza
+
+La libreria è pensata per stare nel percorso di ogni richiesta senza pesare e senza mai diventare
+un punto di guasto.
+
+- **Non blocca.** Nessun I/O, nessuna attesa sincrona su operazioni asincrone, nessuna chiamata
+  di rete. L'estrazione è un calcolo in memoria; l'estrattore è un singleton senza stato condiviso.
+- **Non manda in errore l'applicazione.** Tutto ciò che la libreria esegue prima del resto della
+  pipeline è fail-soft: un errore di estrazione, una configurazione non valida, un logger o un
+  exporter di metriche che falliscono, o un `AddPdndMetadata()` dimenticato lasciano proseguire la
+  richiesta con uno snapshot vuoto. Le eccezioni dei tuoi endpoint invece si propagano normalmente.
+- **Costo contenuto e limitato.** Su una richiesta PDND completa (voucher, prova DPoP, tracking
+  evidence, firma, digest) l'estrazione richiede alcune decine di microsecondi e circa 30 KB di
+  allocazioni. Ogni valore è limitato da `MaxValueLength`, ogni token da `MaxTokenLength`, il
+  numero di header da `MaxHeaderCount`.
+- **L'input ostile non costa di più.** I token malformati vengono rifiutati senza eccezioni, con
+  un costo inferiore a quello di un token valido, quindi non amplificano il carico. Le dimensioni
+  delle metriche hanno un numero massimo di valori distinti.
+- **Nessun costo dove non serve.** `PathExclusions` salta l'estrazione per health check e metriche;
+  ogni decodifica si può spegnere singolarmente.
+
 ## Osservabilità
 
 `Pdnd.Metadata.Diagnostics` proietta lo snapshot sui tag dell'attività corrente e su un contatore

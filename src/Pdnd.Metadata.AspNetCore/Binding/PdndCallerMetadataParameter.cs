@@ -2,8 +2,6 @@
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using System.Reflection;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Pdnd.Metadata.AspNetCore.Access;
 using Pdnd.Metadata.Models;
 
 namespace Pdnd.Metadata.AspNetCore.Binding;
@@ -32,9 +30,8 @@ public readonly struct PdndCallerMetadataParameter
     /// <returns>The bound metadata snapshot wrapper.</returns>
     public static ValueTask<PdndCallerMetadataParameter> BindAsync(HttpContext context, ParameterInfo parameter)
     {
-        var accessor = context.RequestServices.GetRequiredService<IPdndMetadataAccessor>();
-        var md = accessor.Current ?? new PdndCallerMetadata();
+        ArgumentNullException.ThrowIfNull(context);
 
-        return ValueTask.FromResult(new PdndCallerMetadataParameter(md));
+        return ValueTask.FromResult(new PdndCallerMetadataParameter(PdndSnapshotResolver.Resolve(context)));
     }
 }

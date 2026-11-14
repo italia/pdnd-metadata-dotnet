@@ -29,17 +29,27 @@ public sealed class PdndDiagnosticsMiddleware
     /// <param name="context">The current HTTP context.</param>
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Items.TryGetValue(PdndMetadataAspNetCoreConstants.HttpContextItemKey, out var value) &&
-            value is PdndCallerMetadata metadata)
+        // Telemetry must never fail a request. Activity tags and counter measurements run
+        // listener callbacks synchronously, so a faulty exporter or MeterListener would
+        // otherwise surface here as a failed request.
+        try
         {
-            // IOptions<T> is a singleton, so the distinct-value bound held by the options
-            // instance is shared across requests as intended.
-            var options = context.RequestServices?.GetService<IOptions<PdndDiagnosticsOptions>>()?.Value;
+            if (context.Items.TryGetValue(PdndMetadataAspNetCoreConstants.HttpContextItemKey, out var value) &&
+                value is PdndCallerMetadata metadata)
+            {
+                // IOptions<T> is a singleton, so the distinct-value bound held by the options
+                // instance is shared across requests as intended.
+                var options = context.RequestServices?.GetService<IOptions<PdndDiagnosticsOptions>>()?.Value;
 
-            if (options is null)
-                PdndInstrumentation.Record(metadata);
-            else
-                PdndInstrumentation.Record(metadata, options);
+                if (options is null)
+                    PdndInstrumentation.Record(metadata);
+                else
+                    PdndInstrumentation.Record(metadata, options);
+            }
+        }
+        catch
+        {
+            // Fail-soft: the request proceeds without instrumentation.
         }
 
         await _next(context);

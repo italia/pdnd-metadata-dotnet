@@ -20,6 +20,10 @@ public sealed class PdndMetadataMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<PdndMetadataMiddleware>? _logger;
 
+    // A failure that recurs on every request must not flood the log: the first occurrence is a
+    // warning with the exception, the following ones are debug entries without it.
+    private int _failures;
+
     /// <summary>
     /// Initializes a new instance of <see cref="PdndMetadataMiddleware"/>.
     /// </summary>
@@ -42,29 +46,45 @@ public sealed class PdndMetadataMiddleware
         IPdndMetadataExtractor extractor,
         IOptions<PdndMetadataOptions> options)
     {
-        if (options.Value.IsPathExcluded(context.Request.Path.Value))
+        // Everything before _next is fail-soft, including reading the options: a configure
+        // delegate that throws would otherwise fail every request rather than none.
+        try
         {
-            await _next(context);
-            return;
-        }
+            var settings = options.Value;
 
-        if (!context.Items.ContainsKey(PdndMetadataAspNetCoreConstants.HttpContextItemKey))
-        {
-            try
+            if (!settings.IsPathExcluded(context.Request.Path.Value) &&
+                !context.Items.ContainsKey(PdndMetadataAspNetCoreConstants.HttpContextItemKey))
             {
                 var requestContext = HttpContextPdndRequestContextMapper.Map(context);
-                var snapshot = extractor.Extract(requestContext, options.Value);
-
-                context.Items[PdndMetadataAspNetCoreConstants.HttpContextItemKey] = snapshot;
-            }
-            catch (Exception ex)
-            {
-                // Fail-soft: log the error and continue with an empty metadata snapshot
-                _logger?.LogWarning(ex, "Failed to extract PDND metadata from request. Continuing with empty metadata.");
-                context.Items[PdndMetadataAspNetCoreConstants.HttpContextItemKey] = new PdndCallerMetadata();
+                context.Items[PdndMetadataAspNetCoreConstants.HttpContextItemKey] =
+                    extractor.Extract(requestContext, settings);
             }
         }
+        catch (Exception ex)
+        {
+            LogFailure(ex);
+            context.Items.TryAdd(PdndMetadataAspNetCoreConstants.HttpContextItemKey, new PdndCallerMetadata());
+        }
 
+        // Outside the try: exceptions from the rest of the pipeline are not ours to swallow.
         await _next(context);
+    }
+
+    private void LogFailure(Exception ex)
+    {
+        if (_logger is null)
+            return;
+
+        try
+        {
+            if (Interlocked.Increment(ref _failures) == 1)
+                _logger.LogWarning(ex, "Failed to extract PDND metadata from request. Continuing with empty metadata.");
+            else
+                _logger.LogDebug("Failed to extract PDND metadata from request ({Message}). Continuing with empty metadata.", ex.Message);
+        }
+        catch
+        {
+            // A failing logger must not turn a fail-soft path into a failed request.
+        }
     }
 }

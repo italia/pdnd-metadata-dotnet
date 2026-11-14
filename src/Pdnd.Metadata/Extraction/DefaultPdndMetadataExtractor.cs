@@ -34,10 +34,10 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
             md.Add(PdndMetadataKeys.HttpScheme, context.Scheme!, PdndMetadataSource.Connection);
 
         if (!string.IsNullOrWhiteSpace(context.Host))
-            md.Add(PdndMetadataKeys.HttpHost, context.Host!, PdndMetadataSource.Connection);
+            md.Add(PdndMetadataKeys.HttpHost, Truncate(context.Host!, options.MaxValueLength), PdndMetadataSource.Connection);
 
         if (!string.IsNullOrWhiteSpace(context.Path))
-            md.Add(PdndMetadataKeys.HttpPath, context.Path!, PdndMetadataSource.Derived);
+            md.Add(PdndMetadataKeys.HttpPath, Truncate(context.Path!, options.MaxValueLength), PdndMetadataSource.Derived);
 
         if (!string.IsNullOrWhiteSpace(context.QueryString))
             md.Add(PdndMetadataKeys.HttpQuery, Truncate(context.QueryString!, options.MaxValueLength), PdndMetadataSource.Derived);
@@ -97,6 +97,10 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
 
     private static void ExtractPdnd(PdndCallerMetadata md, IReadOnlyDictionary<string, IReadOnlyList<string>> headers, PdndMetadataOptions options)
     {
+        // One scratch snapshot for every token of the request, created on first use and
+        // cleared between tokens.
+        PdndCallerMetadata? scratch = null;
+
         // 1) Voucher in Authorization: Bearer <JWT> or DPoP <JWT> (DPoP-bound voucher)
         if (options.ParsePdndVoucherFromAuthorizationBearer)
         {
@@ -105,7 +109,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(bearerToken, options) &&
                 JwtDecoder.TryDecode(bearerToken!, out var jwt))
             {
-                ExtractTruncated(md, options, scratch => PdndVoucherClaimsExtractor.Extract(scratch, jwt!)); // fail-soft internally
+                ExtractTruncated(md, ref scratch, options, scratch => PdndVoucherClaimsExtractor.Extract(scratch, jwt!)); // fail-soft internally
             }
         }
 
@@ -119,7 +123,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(te, options) &&
                 JwtDecoder.TryDecode(te!, out var jws))
             {
-                ExtractTruncated(md, options, scratch => PdndTrackingEvidenceExtractor.Extract(scratch, jws!)); // fail-soft internally
+                ExtractTruncated(md, ref scratch, options, scratch => PdndTrackingEvidenceExtractor.Extract(scratch, jws!)); // fail-soft internally
             }
         }
 
@@ -131,7 +135,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(dpop, options) &&
                 JwtDecoder.TryDecode(dpop!, out var proof))
             {
-                ExtractTruncated(md, options, scratch => PdndDpopExtractor.Extract(scratch, proof!)); // fail-soft internally
+                ExtractTruncated(md, ref scratch, options, scratch => PdndDpopExtractor.Extract(scratch, proof!)); // fail-soft internally
             }
         }
 
@@ -173,7 +177,7 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
                 IsTokenLengthAllowed(sig, options) &&
                 JwtDecoder.TryDecode(sig!, out var sigToken))
             {
-                ExtractTruncated(md, options, scratch => PdndSignatureExtractor.Extract(scratch, sigToken!)); // fail-soft internally
+                ExtractTruncated(md, ref scratch, options, scratch => PdndSignatureExtractor.Extract(scratch, sigToken!)); // fail-soft internally
             }
         }
     }
@@ -183,16 +187,22 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
     /// <see cref="PdndMetadataOptions.MaxValueLength"/>. The extractors are public and take no
     /// options, so the bound is applied here rather than inside each of them.
     /// </summary>
-    private static void ExtractTruncated(PdndCallerMetadata md, PdndMetadataOptions options, Action<PdndCallerMetadata> extract)
+    private static void ExtractTruncated(
+        PdndCallerMetadata md,
+        ref PdndCallerMetadata? scratch,
+        PdndMetadataOptions options,
+        Action<PdndCallerMetadata> extract)
     {
-        var scratch = new PdndCallerMetadata();
+        if (scratch is null)
+            scratch = new PdndCallerMetadata();
+        else
+            scratch.Clear();
+
         extract(scratch);
 
-        foreach (var entry in scratch.Snapshot())
-        {
-            foreach (var item in entry.Value)
-                md.Add(item.Key, Truncate(item.Value, options.MaxValueLength), item.Source);
-        }
+        // Copies the items directly instead of going through Snapshot(), which would build a
+        // dictionary and an array per key only to be thrown away. Untruncated items are reused.
+        scratch.CopyTo(md, options.MaxValueLength, Truncate);
     }
 
     private static bool IsTokenLengthAllowed(string? token, PdndMetadataOptions options)
@@ -335,20 +345,25 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
     /// </summary>
     private static Dictionary<string, IReadOnlyList<string>> BuildHeaderLookup(PdndRequestContext context)
     {
-        var lookup = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        var lookup = new Dictionary<string, IReadOnlyList<string>>(context.Headers.Count, StringComparer.OrdinalIgnoreCase);
 
         foreach (var header in context.Headers)
         {
             if (string.IsNullOrWhiteSpace(header.Name) || header.Values is null)
                 continue;
 
+            // The common case, one entry per name, stores the caller's list as is: no copy.
             if (!lookup.TryGetValue(header.Name, out var existing))
             {
-                lookup[header.Name] = header.Values.Where(v => v is not null).ToList();
+                lookup[header.Name] = header.Values;
                 continue;
             }
 
-            ((List<string>)existing).AddRange(header.Values.Where(v => v is not null));
+            // A repeated name is rare. Merge into a new list, never into the caller's.
+            var merged = new List<string>(existing.Count + header.Values.Count);
+            merged.AddRange(existing);
+            merged.AddRange(header.Values);
+            lookup[header.Name] = merged;
         }
 
         return lookup;
@@ -362,6 +377,20 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
     private static IReadOnlyList<string> GetHeaderAll(IReadOnlyDictionary<string, IReadOnlyList<string>> headers, string name)
         => headers.TryGetValue(name, out var values) ? values : Array.Empty<string>();
 
+    /// <summary>
+    /// Truncates to at most <paramref name="maxLen"/> UTF-16 code units without splitting a
+    /// surrogate pair: a lone high surrogate is invalid UTF-16 and can make a downstream encoder
+    /// or log sink substitute or reject the whole value.
+    /// </summary>
     private static string Truncate(string value, int maxLen)
-        => maxLen <= 0 ? string.Empty : value.Length <= maxLen ? value : value.Substring(0, maxLen);
+    {
+        if (maxLen <= 0)
+            return string.Empty;
+
+        if (value.Length <= maxLen)
+            return value;
+
+        var cut = char.IsHighSurrogate(value[maxLen - 1]) ? maxLen - 1 : maxLen;
+        return value.Substring(0, cut);
+    }
 }

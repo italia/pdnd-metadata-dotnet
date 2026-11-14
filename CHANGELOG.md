@@ -63,6 +63,40 @@ can affect consumers is the renamed counter dimension, described under Changed.
   - `pipeline` used the non-standard tracking evidence header name and `organizationId`.
   - `conformance` still showed specification 1.1.0 and 30 vectors.
 
+- **The integration could fail requests in five ways, now all fail-soft:**
+  - reading `IOptions<PdndMetadataOptions>.Value` happened outside the middleware's `try`, so a
+    configure delegate that throws (for example `MaxHeaderCount = 0`) failed every request;
+  - `PdndDiagnosticsMiddleware` called the instrumentation without a `try`, so a faulty
+    `MeterListener` or exporter callback failed the request;
+  - the Minimal API and MVC binders used `GetRequiredService`, so an endpoint binding the
+    snapshot answered 500 when `AddPdndMetadata()` was missing. They now fall back to the
+    snapshot in `HttpContext.Items`, then to an empty one;
+  - `UsePdndMetadata()` without `AddPdndMetadata()` failed every request while resolving the
+    middleware's services. It now runs with the defaults and logs a warning once at startup;
+  - a logger that throws while reporting an extraction failure propagated out of the middleware.
+  Exceptions thrown by the rest of the pipeline are still propagated: they are not ours to hide.
+- A recurring extraction failure logged a warning with a stack trace on every request. The first
+  occurrence is logged as a warning, later ones at debug level without the exception.
+- Truncation could split a UTF-16 surrogate pair, leaving invalid text for log sinks and
+  exporters. `http.path` and `http.host` were not bounded by `MaxValueLength`.
+
+### Performance
+
+- Per-request cost of extracting a realistic PDND request (DPoP voucher, DPoP proof, tracking
+  evidence, signature, digest, and thirteen headers) reduced from about 46.6 KB to 31.6 KB
+  allocated, and from about 39 to 17-26 µs, measured on .NET 10:
+  - Base64Url segments are decoded into stack or pooled buffers with `Convert.TryFromBase64Chars`
+    and validated with `Utf8.IsValid`, instead of two string replacements, a padded copy, and an
+    exception for every malformed token;
+  - the header lookup reuses the caller's value lists instead of copying each one;
+  - decoded claims are copied into the snapshot directly, through one scratch snapshot reused
+    for every token of the request, instead of a fresh snapshot and a `Snapshot()` copy per token;
+  - the ASP.NET Core mapper copies header values without LINQ.
+- Malformed tokens, the input an attacker controls, no longer take an exception path in the
+  decoder: rejecting one now costs less than extracting a valid one.
+- `AddPdndMetadata()` registers its services with `TryAdd`: calling it twice no longer registers
+  two extractors, and a custom `IPdndMetadataExtractor` registered beforehand is kept.
+
 ### Security
 
 - The request counter in `Pdnd.Metadata.Diagnostics` used voucher claims as dimensions without
@@ -87,7 +121,7 @@ can affect consumers is the renamed counter dimension, described under Changed.
 
 ### Infrastructure
 
-- Test suite extended from 240 to 327 tests per target framework. New coverage includes every
+- Test suite extended from 240 to 346 tests per target framework. New coverage includes every
   `Parse*` and `CaptureRaw*` switch when turned off or on, `PromoteTracingHeaders` and
   `NormalizeForwardedHeaders`, `MaxHeaderValuesPerName`, the middleware's path exclusion and
   fail-soft paths, Minimal API and MVC binding, the full `AddPdndMetadata()` /

@@ -1,6 +1,7 @@
 // (c) 2026 Francesco Del Re <francesco.delre.87@gmail.com>
 // This code is licensed under MIT license (see LICENSE.txt for details)
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Pdnd.Metadata.AspNetCore.Access;
 using Pdnd.Metadata.Extraction;
 using Pdnd.Metadata.Options;
@@ -29,8 +30,10 @@ public static class PdndMetadataServiceCollectionExtensions
         else
             services.AddOptions<PdndMetadataOptions>();
 
-        services.AddSingleton<IPdndMetadataExtractor, DefaultPdndMetadataExtractor>();
-        services.AddScoped<IPdndMetadataAccessor, PdndMetadataAccessor>();
+        // TryAdd keeps a second AddPdndMetadata() call, or a custom extractor registered
+        // beforehand, from being duplicated or replaced.
+        services.TryAddSingleton<IPdndMetadataExtractor, DefaultPdndMetadataExtractor>();
+        services.TryAddScoped<IPdndMetadataAccessor, PdndMetadataAccessor>();
 
         return services;
     }
