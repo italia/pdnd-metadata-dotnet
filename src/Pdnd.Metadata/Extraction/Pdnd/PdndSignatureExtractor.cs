@@ -24,6 +24,27 @@ public static class PdndSignatureExtractor
 
     private const int MaxSignedHeaderNameLength = 256;
 
+    /// <summary>RFC 9110 §5.6.2: a header name is a non-empty sequence of tchar.</summary>
+    private static bool IsHeaderNameToken(string name)
+    {
+        if (name.Length == 0)
+            return false;
+
+        foreach (var c in name)
+        {
+            var isTchar = c is >= 'a' and <= 'z'
+                or >= 'A' and <= 'Z'
+                or >= '0' and <= '9'
+                or '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+' or '-' or '.'
+                or '^' or '_' or '`' or '|' or '~';
+
+            if (!isTchar)
+                return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Extracts header fields (alg/kid/typ) and selected payload claims if present.
     /// This method is fail-soft and never throws.
@@ -75,9 +96,11 @@ public static class PdndSignatureExtractor
                         if (CredentialHeaders.Contains(header.Key))
                             continue;
 
-                        // The name becomes part of a key. Real header names are short; a name
-                        // beyond this bound only makes an unbounded key.
-                        if (header.Key.Length > MaxSignedHeaderNameLength)
+                        // The name becomes part of a key. Real header names are short tokens of
+                        // RFC 9110 tchar; anything else (zero-width or other invisible characters
+                        // included) is not a header that could have been on the wire, and could
+                        // otherwise disguise a credential header from the check above.
+                        if (header.Key.Length > MaxSignedHeaderNameLength || !IsHeaderNameToken(header.Key))
                             continue;
 
                         metadata.Add(

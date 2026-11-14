@@ -208,6 +208,49 @@ public sealed class FailSoftTests
     }
 
     [Fact]
+    public async Task UsePdndMetadata_WhenTheRegisteredExtractorFailsToResolve_DoesNotFallBackToDefaults()
+    {
+        // Falling back to the default extractor and default options would ignore the operator's
+        // exclusions and capture restrictions. The request proceeds with an empty snapshot.
+        var logger = new LevelRecorder<PdndMetadataMiddleware>();
+        var services = new ServiceCollection();
+        services.AddSingleton<ILoggerFactory>(new SingleLoggerFactory(logger));
+        services.AddSingleton<IPdndMetadataExtractor>(_ => throw new InvalidOperationException("broken factory"));
+        services.AddPdndMetadata(o => o.HeaderAllowList.Remove("User-Agent"));
+        using var provider = services.BuildServiceProvider();
+
+        var app = new ApplicationBuilder(provider);
+        app.UsePdndMetadata();
+        var nextCalled = false;
+        app.Run(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        var context = new DefaultHttpContext { RequestServices = provider };
+        context.Request.Headers.UserAgent = "client/1.0";
+        context.Request.Headers.Authorization = "Bearer " + Base64UrlTestHelper.Jwt(
+            "{\"alg\":\"RS256\"}", "{\"consumerId\":\"c-1\"}", "sig");
+
+        await app.Build()(context);
+
+        nextCalled.Should().BeTrue();
+        var snapshot = context.Items[PdndMetadataAspNetCoreConstants.HttpContextItemKey].Should().BeOfType<PdndCallerMetadata>().Subject;
+        snapshot.Snapshot().Should().BeEmpty("nothing must be extracted under configuration that was not applied");
+        logger.Levels.Should().Contain(LogLevel.Warning);
+    }
+
+    private sealed class SingleLoggerFactory : ILoggerFactory
+    {
+        private readonly ILogger _logger;
+        public SingleLoggerFactory(ILogger logger) => _logger = logger;
+        public ILogger CreateLogger(string categoryName) => _logger;
+        public void AddProvider(ILoggerProvider provider) { }
+        public void Dispose() { }
+    }
+
+    [Fact]
     public void AddPdndMetadata_IsIdempotent_AndKeepsACustomExtractor()
     {
         var services = new ServiceCollection();
@@ -426,6 +469,29 @@ public sealed class FailSoftTests
 
         md.Snapshot().Values.SelectMany(items => items).Should().NotContain(i => i.Value == "secret-credential");
         md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaders).Should().Be(paddedName.Trim().ToLowerInvariant());
+    }
+
+    [Theory]
+    [InlineData("\\u200Bauthorization")]   // zero-width space, not removed by Trim()
+    [InlineData("authorization\\u200B")]
+    [InlineData("\\uFEFFauthorization")]   // byte order mark
+    [InlineData("x-api-key\\u200B")]
+    [InlineData("auth orization")]         // inner space: not a header name either
+    public void SignedHeaderNames_ThatAreNotHttpTokens_DoNotBecomeKeys(string jsonEscapedName)
+    {
+        var signature = Base64UrlTestHelper.Jwt(
+            "{\"alg\":\"RS256\"}",
+            "{\"signed_headers\":[{\"digest\":\"SHA-256=a=\"},{\"" + jsonEscapedName + "\":\"secret-credential\"}]}",
+            "sig");
+
+        var md = new DefaultPdndMetadataExtractor().Extract(new PdndRequestContext
+        {
+            Method = "POST",
+            Headers = new[] { new PdndRequestHeader("Agid-JWT-Signature", new[] { signature }) }
+        }, new PdndMetadataOptions());
+
+        md.Snapshot().Values.SelectMany(items => items).Should().NotContain(i => i.Value == "secret-credential");
+        md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaderPrefix + "digest").Should().Be("SHA-256=a=");
     }
 
     [Fact]

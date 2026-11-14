@@ -83,8 +83,12 @@ can affect consumers is the renamed counter dimension, described under Changed.
     throws falls back the same way instead of producing a 500;
   - `UsePdndMetadata()` without `AddPdndMetadata()` failed every request while resolving the
     middleware's services. The extractor and the options are still resolved per request from
-    `RequestServices`, so scoped and per-tenant registrations work as before; when no extractor
-    is registered, the default one and the default options are used and a warning is logged once;
+    `RequestServices`, so scoped and per-tenant registrations work as before. When no extractor
+    is registered, the default extractor runs with the options found in the container and a
+    warning is logged once. When a registered extractor or the options fail to resolve (a
+    throwing constructor or factory), the error is logged and the request proceeds with an empty
+    snapshot rather than with the defaults, which would ignore the configured exclusions and
+    capture restrictions. A missing `RequestServices` is handled the same way instead of throwing;
   - a logger that throws while reporting an extraction failure propagated out of the middleware.
   Exceptions thrown by the rest of the pipeline are still propagated: they are not ours to hide.
 - A recurring extraction failure logged a warning with a stack trace on every request. The first
@@ -122,7 +126,8 @@ can affect consumers is the renamed counter dimension, described under Changed.
   extractor also withholds every name in `HeaderDenyList`. The names remain listed in
   `pdnd.signature.signed_headers`. Names are trimmed before these checks, so a padded name such
   as `" authorization"` is treated as the header it is. Names longer than 256 characters no
-  longer become keys.
+  longer become keys, nor do names that are not RFC 9110 header tokens: zero-width or other
+  invisible characters cannot disguise a credential header either.
 - The request counter in `Pdnd.Metadata.Diagnostics` used voucher claims as dimensions without
   any bound. The voucher is not verified at that point, so forged tokens with random
   identifiers could create an unbounded number of time series in the metrics backend. Each
@@ -150,7 +155,7 @@ can affect consumers is the renamed counter dimension, described under Changed.
 
 ### Infrastructure
 
-- Test suite extended from 240 to 366 tests per target framework. New coverage includes every
+- Test suite extended from 240 to 372 tests per target framework. New coverage includes every
   `Parse*` and `CaptureRaw*` switch when turned off or on, `PromoteTracingHeaders` and
   `NormalizeForwardedHeaders`, `MaxHeaderValuesPerName`, the middleware's path exclusion and
   fail-soft paths, Minimal API and MVC binding, the full `AddPdndMetadata()` /

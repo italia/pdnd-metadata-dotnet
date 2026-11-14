@@ -36,6 +36,14 @@ _TOKEN_HEADERS: list[tuple[tuple[str, ...], str]] = [
 # Signed headers whose value is a credential. Lowercase, as signed header names are normalized.
 _CREDENTIAL_HEADERS = frozenset({"authorization", "proxy-authorization", "cookie", "set-cookie"})
 
+# RFC 9110 tchar: the characters a header name may contain.
+_TCHAR = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'*+-.^_`|~")
+
+
+def _is_token(name: str) -> bool:
+    return bool(name) and all(character in _TCHAR for character in name)
+
+
 # Claims promoted from the JOSE header, in the order they appear in the specification.
 _JOSE_CLAIMS = ("alg", "kid", "typ")
 
@@ -243,7 +251,7 @@ def extract(headers: Mapping[str, str | Sequence[str]]) -> dict[str, str]:
                 for name, value in pairs:
                     # A signed credential header carries the credential itself: its value is
                     # withheld, and names too long to be real headers do not become keys.
-                    if value and name not in _CREDENTIAL_HEADERS and len(name) <= 256:
+                    if value and name not in _CREDENTIAL_HEADERS and len(name) <= 256 and _is_token(name):
                         emit(f"pdnd.signature.signed_header.{name}", value)
 
     authorization = lookup.get("authorization")

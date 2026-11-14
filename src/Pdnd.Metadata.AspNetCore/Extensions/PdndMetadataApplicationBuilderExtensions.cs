@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Pdnd.Metadata.AspNetCore.Constants;
 using Pdnd.Metadata.AspNetCore.Middleware;
 using Pdnd.Metadata.Extraction;
+using Pdnd.Metadata.Models;
 using Pdnd.Metadata.Options;
 using MsOptions = Microsoft.Extensions.Options.Options;
 
@@ -21,11 +23,18 @@ public static class PdndMetadataApplicationBuilderExtensions
     /// Enables PDND metadata extraction middleware.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The extractor and the options are resolved per request from
     /// <see cref="HttpContext.RequestServices"/>, as convention-based middleware does, so scoped
-    /// registrations and per-tenant containers keep working. When <c>AddPdndMetadata()</c> has
-    /// not been called, the middleware runs with the default extractor and default options and
-    /// logs a warning once, instead of failing every request.
+    /// registrations and per-tenant containers keep working.
+    /// </para>
+    /// <para>
+    /// When no <see cref="IPdndMetadataExtractor"/> is registered (<c>AddPdndMetadata()</c> was not
+    /// called), the default extractor runs with the options found in the container, and a
+    /// warning is logged once. When a registered extractor or the options fail to resolve, the
+    /// error is logged and the request proceeds with an empty snapshot: falling back to the
+    /// defaults would silently drop the operator's exclusions and capture restrictions.
+    /// </para>
     /// </remarks>
     /// <param name="app">Application builder.</param>
     /// <returns>The same application builder.</returns>
@@ -36,7 +45,8 @@ public static class PdndMetadataApplicationBuilderExtensions
         var logger = app.ApplicationServices.GetService<ILoggerFactory>()?.CreateLogger<PdndMetadataMiddleware>();
         var fallbackExtractor = new DefaultPdndMetadataExtractor();
         var fallbackOptions = MsOptions.Create(new PdndMetadataOptions());
-        var warned = 0;
+        var warnedMissing = 0;
+        var resolutionFailures = 0;
 
         return app.Use(next =>
         {
@@ -44,35 +54,57 @@ public static class PdndMetadataApplicationBuilderExtensions
 
             return context =>
             {
-                IPdndMetadataExtractor? extractor = null;
-                IOptions<PdndMetadataOptions>? options = null;
+                IPdndMetadataExtractor? extractor;
+                IOptions<PdndMetadataOptions>? options;
 
                 try
                 {
                     extractor = context.RequestServices?.GetService<IPdndMetadataExtractor>();
                     options = context.RequestServices?.GetService<IOptions<PdndMetadataOptions>>();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // A container that fails to resolve falls back to the defaults below.
+                    // Registered but broken: do not substitute the defaults, which would ignore
+                    // the configured exclusions and capture restrictions. Skip extraction.
+                    Log(logger, ref resolutionFailures, ex,
+                        "Failed to resolve the PDND metadata services. Continuing with empty metadata.");
+                    context.Items.TryAdd(PdndMetadataAspNetCoreConstants.HttpContextItemKey, new PdndCallerMetadata());
+                    return next(context);
                 }
 
-                if (extractor is null && Interlocked.Exchange(ref warned, 1) == 0)
+                if (extractor is null && Interlocked.Exchange(ref warnedMissing, 1) == 0)
                 {
-                    try
-                    {
-                        logger?.LogWarning(
-                            "UsePdndMetadata() found no IPdndMetadataExtractor; call services.AddPdndMetadata(). " +
-                            "Extraction runs with the default extractor and default options.");
-                    }
-                    catch
-                    {
-                        // A failing logger must not fail the request.
-                    }
+                    Log(logger, ref warnedMissing, null,
+                        "UsePdndMetadata() found no IPdndMetadataExtractor; call services.AddPdndMetadata(). " +
+                        "Extraction runs with the default extractor.");
                 }
 
+                // Options are absent only when no options infrastructure is registered at all,
+                // in which case nothing could have configured them: the defaults are faithful.
                 return middleware.InvokeAsync(context, extractor ?? fallbackExtractor, options ?? fallbackOptions);
             };
         });
+    }
+
+    /// <summary>
+    /// Logs a warning the first time (with the exception, if any), debug entries afterwards, and
+    /// never lets a failing logger fail the request.
+    /// </summary>
+    private static void Log(ILogger? logger, ref int counter, Exception? exception, string message)
+    {
+        if (logger is null)
+            return;
+
+        try
+        {
+            if (exception is null || Interlocked.Increment(ref counter) == 1)
+                logger.LogWarning(exception, message);
+            else
+                logger.LogDebug("{Message} ({Reason})", message, exception.Message);
+        }
+        catch
+        {
+            // Fail-soft.
+        }
     }
 }
