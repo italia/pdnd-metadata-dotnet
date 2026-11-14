@@ -12,13 +12,14 @@
 </p>
 
 <p align="center">
-  <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+  <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square"></a>
+  <a href="https://github.com/italia/pdnd-metadata-dotnet/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/italia/pdnd-metadata-dotnet/ci.yml?branch=main&label=CI&style=flat-square"></a>
   <a href="https://www.nuget.org/packages/Pdnd.Metadata"><img alt="NuGet" src="https://img.shields.io/nuget/v/Pdnd.Metadata?style=flat-square"></a>
   <a href="https://www.nuget.org/packages/Pdnd.Metadata"><img alt="Downloads" src="https://img.shields.io/nuget/dt/Pdnd.Metadata?style=flat-square"></a>
   <a href="https://github.com/italia/pdnd-metadata-dotnet/issues"><img alt="Issues" src="https://img.shields.io/github/issues/italia/pdnd-metadata-dotnet?style=flat-square"></a>
   <a href="https://github.com/italia/pdnd-metadata-dotnet/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/italia/pdnd-metadata-dotnet/codeql.yml?branch=main&label=CodeQL&style=flat-square"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/italia/pdnd-metadata-dotnet"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/italia/pdnd-metadata-dotnet?label=OpenSSF%20Scorecard&style=flat-square"></a>
-  <a href="README.md"><img alt="Italiano" src="https://img.shields.io/badge/lang-it-green"></a>
+  <a href="README.md"><img alt="Italiano" src="https://img.shields.io/badge/lang-it-green?style=flat-square"></a>
 </p>
 
 ---
@@ -94,26 +95,25 @@ dotnet add package Pdnd.Metadata.AspNetCore
 
 ## Usage
 
-Service registration. The recommended posture captures only what you explicitly govern.
+Service registration. The defaults are already the recommended posture: only allow-listed headers
+are captured, and the allow list covers tracing, correlation, `Forwarded`, and `X-Forwarded-For`.
+Add only what you need on top.
 
 ```csharp
 builder.Services.AddPdndMetadata(options =>
 {
-    options.CaptureAllHeaders = false;
-
-    options.HeaderAllowList.Add("traceparent");
-    options.HeaderAllowList.Add("x-correlation-id");
-    options.HeaderAllowList.Add("x-forwarded-for");
+    options.HeaderAllowList.Add("X-Requesting-Office");   // an application header worth keeping
 
     options.PathExclusions.Add("/health");
     options.PathExclusions.Add("/metrics");
 });
 ```
 
-Middleware, before endpoint mapping. Order matters in two places: after `UseAuthentication()`,
-otherwise the `claim.*` keys stay empty; and, if you use `UseForwardedHeaders()`, bear in mind that
-it consumes `X-Forwarded-For` and moves it to `X-Original-For`, so `net.forwarded_for` reflects
-what is left.
+Middleware, before endpoint mapping. Order matters in two places:
+
+- after `UseAuthentication()`, otherwise the `claim.*` keys stay empty;
+- `UseForwardedHeaders()`, if present, consumes `X-Forwarded-For` and moves it to
+  `X-Original-For`, so `net.forwarded_for` reflects what is left.
 
 ```csharp
 app.UseAuthentication();
@@ -161,7 +161,9 @@ Keys follow a hierarchical scheme. These are the prefixes.
 
 | Prefix | Source |
 | --- | --- |
-| `http.*`, `net.*` | Method, scheme, host, path, addresses, and ports |
+| `http.*`, `net.*` | Method, scheme, host, path, addresses, ports, and forwarded chain |
+| `security.*` | HTTPS, mTLS (certificate thumbprint only), TLS and HTTP protocol |
+| `claim.*` | Claims of the authenticated user, after `UseAuthentication()` |
 | `trace.*`, `correlation.id` | W3C Trace Context and request identifiers |
 | `pdnd.voucher.*` | Voucher claims: `client_id`, `purposeId`, `consumerId`, `producerId`, `eserviceId`, `descriptorId`, `cnf.jkt`, `digest` |
 | `pdnd.trackingEvidence.*` | `Agid-JWT-TrackingEvidence` claims, including the audit data `userID`, `userLocation`, `LoA` |
@@ -218,6 +220,10 @@ Tags are written to the current `Activity`, which is the request activity ASP.NE
 to see them in traces you need the OpenTelemetry ASP.NET Core instrumentation. The library does not
 create an `ActivitySource` of its own, so `AddSource(PdndInstrumentation.ActivitySourceName)` is not
 needed.
+
+```bash
+dotnet add package Pdnd.Metadata.Diagnostics
+```
 
 ```csharp
 builder.Services.AddOpenTelemetry()
@@ -280,6 +286,7 @@ characters where Base64Url is required, invalid UTF-8 that a lenient decoder sil
 | `PathExclusions` | empty | Paths excluded from extraction, matched by segment: `/health` does not exclude `/healthcare` |
 | `CaptureRawTrackingEvidenceHeader`, `CaptureRawDpopHeader`, `CaptureRawSignatureHeader` | `false` | Capture raw signed blobs, discouraged in production |
 | `CaptureRawDigestHeader` | `true` | Raw capture of `Digest` and `Content-Digest`, which are not credentials |
+| `Parse*`, `PromoteTracingHeaders`, `NormalizeForwardedHeaders` | `true` | Each decoding step can be switched off on its own; the others are unaffected |
 
 `Pdnd.Metadata.Diagnostics` options are registered with `AddPdndDiagnostics()`.
 
@@ -312,6 +319,10 @@ that use it must be updated. Details are in the [changelog](CHANGELOG.md).
 
 Fork, change, commit, open a pull request. Commit messages follow
 [Conventional Commits](https://www.conventionalcommits.org/) and are checked in CI.
+
+```bash
+dotnet test --solution Pdnd.Metadata.slnx
+```
 
 Conformance vectors are worth more than prose. If you have a token shape from a real integration
 that the corpus does not cover, open one with the values replaced by synthetic equivalents. Vectors

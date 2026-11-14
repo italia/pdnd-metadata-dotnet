@@ -12,13 +12,14 @@
 </p>
 
 <p align="center">
-  <a href="https://opensource.org/licenses/MIT"><img alt="Licenza MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+  <a href="https://opensource.org/licenses/MIT"><img alt="Licenza MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square"></a>
+  <a href="https://github.com/italia/pdnd-metadata-dotnet/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/italia/pdnd-metadata-dotnet/ci.yml?branch=main&label=CI&style=flat-square"></a>
   <a href="https://www.nuget.org/packages/Pdnd.Metadata"><img alt="NuGet" src="https://img.shields.io/nuget/v/Pdnd.Metadata?style=flat-square"></a>
   <a href="https://www.nuget.org/packages/Pdnd.Metadata"><img alt="Download" src="https://img.shields.io/nuget/dt/Pdnd.Metadata?style=flat-square"></a>
   <a href="https://github.com/italia/pdnd-metadata-dotnet/issues"><img alt="Issue" src="https://img.shields.io/github/issues/italia/pdnd-metadata-dotnet?style=flat-square"></a>
   <a href="https://github.com/italia/pdnd-metadata-dotnet/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/italia/pdnd-metadata-dotnet/codeql.yml?branch=main&label=CodeQL&style=flat-square"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/italia/pdnd-metadata-dotnet"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/italia/pdnd-metadata-dotnet?label=OpenSSF%20Scorecard&style=flat-square"></a>
-  <a href="README.EN.md"><img alt="English" src="https://img.shields.io/badge/lang-en-blue"></a>
+  <a href="README.EN.md"><img alt="English" src="https://img.shields.io/badge/lang-en-blue?style=flat-square"></a>
 </p>
 
 ---
@@ -95,26 +96,25 @@ dotnet add package Pdnd.Metadata.AspNetCore
 
 ## Uso
 
-Registrazione dei servizi. La postura consigliata cattura solo ciò che si governa esplicitamente.
+Registrazione dei servizi. Le impostazioni predefinite sono già quelle consigliate: si catturano
+solo gli header dell'allow list, che comprende tracing, correlazione, `Forwarded` e
+`X-Forwarded-For`. Si aggiunge solo ciò che serve in più.
 
 ```csharp
 builder.Services.AddPdndMetadata(options =>
 {
-    options.CaptureAllHeaders = false;
-
-    options.HeaderAllowList.Add("traceparent");
-    options.HeaderAllowList.Add("x-correlation-id");
-    options.HeaderAllowList.Add("x-forwarded-for");
+    options.HeaderAllowList.Add("X-Ente-Richiedente");   // un header applicativo da conservare
 
     options.PathExclusions.Add("/health");
     options.PathExclusions.Add("/metrics");
 });
 ```
 
-Middleware, prima del mapping degli endpoint. L'ordine conta in due punti: dopo
-`UseAuthentication()`, altrimenti le chiavi `claim.*` restano vuote; e, se si usa
-`UseForwardedHeaders()`, tenendo presente che quel middleware consuma `X-Forwarded-For` e lo
-sposta in `X-Original-For`, per cui `net.forwarded_for` riflette ciò che resta.
+Middleware, prima del mapping degli endpoint. L'ordine conta in due punti:
+
+- dopo `UseAuthentication()`, altrimenti le chiavi `claim.*` restano vuote;
+- `UseForwardedHeaders()`, se presente, consuma `X-Forwarded-For` e lo sposta in
+  `X-Original-For`, quindi `net.forwarded_for` riflette ciò che resta.
 
 ```csharp
 app.UseAuthentication();
@@ -162,7 +162,9 @@ Le chiavi seguono uno schema gerarchico. Questi sono i prefissi.
 
 | Prefisso | Origine |
 | --- | --- |
-| `http.*`, `net.*` | Metodo, schema, host, path, indirizzi, e porte |
+| `http.*`, `net.*` | Metodo, schema, host, path, indirizzi, porte, e catena forwarded |
+| `security.*` | HTTPS, mTLS (solo thumbprint del certificato), protocollo TLS e HTTP |
+| `claim.*` | Claim dell'utente autenticato, dopo `UseAuthentication()` |
 | `trace.*`, `correlation.id` | W3C Trace Context e identificativi di richiesta |
 | `pdnd.voucher.*` | Claim del voucher: `client_id`, `purposeId`, `consumerId`, `producerId`, `eserviceId`, `descriptorId`, `cnf.jkt`, `digest` |
 | `pdnd.trackingEvidence.*` | Claim di `Agid-JWT-TrackingEvidence`, inclusi i dati di audit `userID`, `userLocation`, `LoA` |
@@ -223,6 +225,10 @@ I tag vengono scritti sull'`Activity` corrente, cioè quella della richiesta cre
 Core: per vederli nelle tracce serve la strumentazione ASP.NET Core di OpenTelemetry. La libreria
 non crea un'`ActivitySource` propria, quindi `AddSource(PdndInstrumentation.ActivitySourceName)`
 non è necessario.
+
+```bash
+dotnet add package Pdnd.Metadata.Diagnostics
+```
 
 ```csharp
 builder.Services.AddOpenTelemetry()
@@ -286,6 +292,7 @@ e `alg: none`.
 | `PathExclusions` | vuoto | Path esclusi dall'estrazione, confrontati per segmento: `/health` non esclude `/healthcare` |
 | `CaptureRawTrackingEvidenceHeader`, `CaptureRawDpopHeader`, `CaptureRawSignatureHeader` | `false` | Cattura dei blob firmati grezzi, sconsigliata in produzione |
 | `CaptureRawDigestHeader` | `true` | Cattura grezza di `Digest` e `Content-Digest`, che non sono credenziali |
+| `Parse*`, `PromoteTracingHeaders`, `NormalizeForwardedHeaders` | `true` | Ogni decodifica si può spegnere singolarmente; le altre non ne risentono |
 
 Le opzioni di `Pdnd.Metadata.Diagnostics` si registrano con `AddPdndDiagnostics()`.
 
@@ -318,6 +325,10 @@ che la usano vanno aggiornate. Il dettaglio è nel [changelog](CHANGELOG.md).
 
 Fork, modifica, commit, pull request. I messaggi di commit seguono
 [Conventional Commits](https://www.conventionalcommits.org/) e sono verificati in CI.
+
+```bash
+dotnet test --solution Pdnd.Metadata.slnx
+```
 
 I vettori di conformità valgono più della prosa. Se hai la forma di un token proveniente da
 un'integrazione reale che il corpus non copre, aprine uno con i valori sostituiti da equivalenti
