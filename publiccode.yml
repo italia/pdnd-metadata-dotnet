@@ -42,6 +42,7 @@ description:
       con supporto agli scenari PDND come voucher, DPoP, digest, tracking evidence e tracing.
     features:
       - Estrazione automatica dei metadati PDND
+      - Vettori di conformità condivisi
       - Snapshot standard dei metadati
       - Supporto a correlazione e tracing
       - Gestione sicura di header e token sensibili

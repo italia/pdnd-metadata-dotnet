@@ -131,7 +131,7 @@ Extracted from the `Agid-JWT-TrackingEvidence` header (AgID patterns AUDIT_REST_
 AUDIT_REST_02). PDND documentation also writes it `AgID-JWT-TrackingEvidence`: header names are
 case-insensitive, so both are the same header. The hyphenated spelling
 `Agid-JWT-Tracking-Evidence` is accepted for compatibility, although neither AgID nor PDND uses it.
-When both are present, the hyphenated one is read first.  
+When both are present, `Agid-JWT-TrackingEvidence` is read first; the hyphenated header is used only when the official one is absent or blank.  
 In AUDIT_REST_02 the SHA-256 hash of this JWS travels in the voucher, under `digest.value`.  
 Reference: [PDND – Voucher con informazioni aggiuntive](https://developer.pagopa.it/it/pdnd-interoperabilita/guides/manuale-operativo-pdnd-interoperabilita/v1.0/tutorial/tutorial-per-il-fruitore/come-richiedere-un-voucher-bearer-per-le-api-di-un-erogatore-con-informazioni-aggiuntive)
 
@@ -249,7 +249,7 @@ Reference: [AgID – Linee Guida sull'interoperabilità tecnica](https://www.agi
 | `pdnd.signature.iat` | `iat` | Claims | Issued at (epoch seconds) |
 | `pdnd.signature.exp` | `exp` | Claims | Expiration (epoch seconds) |
 | `pdnd.signature.signed_headers` | `signed_headers` | Claims | Comma-separated list of signed header names, lowercased. Not a digest: body integrity is carried separately by `Digest` or `Content-Digest` and verified as a distinct step. |
-| `pdnd.signature.signed_header.<name>` | `signed_headers[]` | Claims | Value of each individual signed header, when the claim carries values. Header names are lowercased. |
+| `pdnd.signature.signed_header.<name>` | `signed_headers[]` | Claims | Value of each individual signed header, when the claim carries values. Header names are lowercased. Never produced for `authorization`, `proxy-authorization`, `cookie`, or `set-cookie`, whose signed value is the credential itself, nor for names longer than 256 characters; implementations with a configurable deny list also withhold the names it covers. The name still appears in `pdnd.signature.signed_headers`. |
 
 ---
 

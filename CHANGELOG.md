@@ -21,6 +21,9 @@ can affect consumers is the renamed counter dimension, described under Changed.
   be updated.
 - `pdnd.voucher.organizationId`, `pdnd.voucher.clientId`, and `pdnd.voucher.dnonce` are documented
   as legacy. They are still produced when a token carries them.
+- `AddPdndMetadata()` registers its services with `TryAdd`: calling it twice no longer registers
+  two extractors, and a custom `IPdndMetadataExtractor` registered beforehand is kept instead of
+  being shadowed by the default one.
 
 ### Fixed
 
@@ -62,7 +65,13 @@ can affect consumers is the renamed counter dimension, described under Changed.
     `consumerId`, `trackingEvidence`). Lookups are case-insensitive, which is what it now says.
   - `pipeline` used the non-standard tracking evidence header name and `organizationId`.
   - `conformance` still showed specification 1.1.0 and 30 vectors.
-
+- A bracketed IPv6 address with a port in `Forwarded` (`for="[2001:db8::1]:8080"`) kept its
+  brackets and port in `net.forwarded_for`. The address is now extracted alone.
+- When both tracking evidence spellings were sent, the hyphenated one was read first and an empty
+  or unusable value there hid a valid `Agid-JWT-TrackingEvidence`. The AgID name is now read
+  first, and the hyphenated one only when it is absent or blank.
+- `JwtJsonReader` threw `InvalidOperationException` when a token payload was valid JSON but not an
+  object (for example `[]` or `42`). It now returns `false`, as for any other unreadable claim.
 - **The integration could fail requests in five ways, now all fail-soft:**
   - reading `IOptions<PdndMetadataOptions>.Value` happened outside the middleware's `try`, so a
     configure delegate that throws (for example `MaxHeaderCount = 0`) failed every request;
@@ -94,11 +103,17 @@ can affect consumers is the renamed counter dimension, described under Changed.
   - the ASP.NET Core mapper copies header values without LINQ.
 - Malformed tokens, the input an attacker controls, no longer take an exception path in the
   decoder: rejecting one now costs less than extracting a valid one.
-- `AddPdndMetadata()` registers its services with `TryAdd`: calling it twice no longer registers
-  two extractors, and a custom `IPdndMetadataExtractor` registered beforehand is kept.
 
 ### Security
 
+- **A signed `Authorization` header stored the voucher in the snapshot.** Every pair of the
+  `Agid-JWT-Signature` `signed_headers` claim was stored as `pdnd.signature.signed_header.<name>`.
+  A client that signs its `Authorization` header puts the voucher itself in that claim, so the
+  full token ended up under `pdnd.signature.signed_header.authorization`, contradicting the
+  guarantee that the raw `Authorization` value is never stored. Values of `authorization`,
+  `proxy-authorization`, `cookie`, and `set-cookie` are now always withheld, and the default
+  extractor also withholds every name in `HeaderDenyList`. The names remain listed in
+  `pdnd.signature.signed_headers`. Names longer than 256 characters no longer become keys.
 - The request counter in `Pdnd.Metadata.Diagnostics` used voucher claims as dimensions without
   any bound. The voucher is not verified at that point, so forged tokens with random
   identifiers could create an unbounded number of time series in the metrics backend. Each
@@ -109,6 +124,8 @@ can affect consumers is the renamed counter dimension, described under Changed.
 
 - Voucher claims of the current PDND vouchers: `pdnd.voucher.consumerId`, `producerId`,
   `eserviceId`, `descriptorId`, and `cnf.jkt` (DPoP vouchers, RFC 9449 §6.1).
+- `pdnd.voucher.digest.alg` and `pdnd.voucher.digest.value`: the AUDIT_REST_02 hash of the
+  tracking evidence that PDND copies into the voucher.
 - Audit claims of the tracking evidence (AUDIT_REST_01/02): `pdnd.trackingEvidence.userID`,
   `userLocation`, `LoA`, `purposeId`, and `dnonce`.
 - `pdnd.voucher.consumerId`, `eserviceId`, and `descriptorId` are promoted to activity tags.
@@ -121,14 +138,13 @@ can affect consumers is the renamed counter dimension, described under Changed.
 
 ### Infrastructure
 
-- Test suite extended from 240 to 346 tests per target framework. New coverage includes every
+- Test suite extended from 240 to 355 tests per target framework. New coverage includes every
   `Parse*` and `CaptureRaw*` switch when turned off or on, `PromoteTracingHeaders` and
   `NormalizeForwardedHeaders`, `MaxHeaderValuesPerName`, the middleware's path exclusion and
   fail-soft paths, Minimal API and MVC binding, the full `AddPdndMetadata()` /
   `UsePdndMetadata()` pipeline, concurrent writers, and the counter bound under contention.
   Line coverage is 98.9% and branch coverage 97.1%; the remaining lines are defensive branches
   that the input validation makes unreachable.
-
 - `global.json` pins the build to the .NET 10 SDK (`10.0.100`, rolling forward to the latest
   feature band), so local builds use the same SDK as CI instead of whatever is newest on the
   machine.

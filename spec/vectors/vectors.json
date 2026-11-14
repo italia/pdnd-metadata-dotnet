@@ -466,9 +466,13 @@
         }
       },
       "expect": {
-        "pdnd.signature.signed_headers": "digest, content-type, authorization"
+        "pdnd.signature.signed_headers": "digest, content-type, authorization",
+        "pdnd.signature.signed_header.digest": "SHA-256=a=",
+        "__absent__": [
+          "pdnd.signature.signed_header.authorization"
+        ]
       },
-      "notes": "Alphabetical order would give 'authorization, content-type, digest'. Claim order is normative."
+      "notes": "Alphabetical order would give 'authorization, content-type, digest'. Claim order is normative. The signed Authorization value is the credential itself and is never produced."
     },
     {
       "id": "signature-007",

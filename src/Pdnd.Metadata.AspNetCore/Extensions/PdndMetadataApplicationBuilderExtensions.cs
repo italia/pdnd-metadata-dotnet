@@ -29,7 +29,12 @@ public static class PdndMetadataApplicationBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        if (app.ApplicationServices.GetService<IPdndMetadataExtractor>() is not null)
+        // Ask whether the extractor is registered without resolving it. Resolving from the root
+        // provider would fail at startup for a scoped extractor when scope validation is on
+        // (the Development default), and would capture it as a singleton otherwise.
+        // A container that cannot answer is assumed to have it, as in 2.0.0.
+        var registrations = app.ApplicationServices.GetService<IServiceProviderIsService>();
+        if (registrations is null || registrations.IsService(typeof(IPdndMetadataExtractor)))
             return app.UseMiddleware<PdndMetadataMiddleware>();
 
         var logger = app.ApplicationServices.GetService<ILoggerFactory>()?.CreateLogger<PdndMetadataMiddleware>();

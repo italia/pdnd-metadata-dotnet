@@ -157,12 +157,19 @@ public sealed class PdndCallerMetadata
     /// <paramref name="maxValueLength"/> through <paramref name="truncate"/>. Items within the
     /// bound are added as the same instance, so the common case allocates nothing.
     /// </summary>
-    internal void CopyTo(PdndCallerMetadata target, int maxValueLength, Func<string, int, string> truncate)
+    internal void CopyTo(
+        PdndCallerMetadata target,
+        int maxValueLength,
+        Func<string, int, string> truncate,
+        Func<string, bool>? skipKey = null)
     {
         lock (_lock)
         {
             foreach (var kvp in _items)
             {
+                if (skipKey is not null && skipKey(kvp.Key))
+                    continue;
+
                 foreach (var item in kvp.Value)
                 {
                     target.Add(item.Value.Length <= maxValueLength

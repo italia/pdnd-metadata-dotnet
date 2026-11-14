@@ -151,6 +151,29 @@ public sealed class FailSoftTests
     }
 
     [Fact]
+    public async Task UsePdndMetadata_WithAScopedCustomExtractor_StartsUnderScopeValidation()
+    {
+        // Development turns scope validation on. Resolving the extractor from the root provider
+        // to check its registration failed startup for a scoped extractor.
+        var services = new ServiceCollection();
+        services.AddScoped<IPdndMetadataExtractor, CustomExtractor>();
+        services.AddPdndMetadata();
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+
+        var app = new ApplicationBuilder(provider);
+        var act = () => app.UsePdndMetadata();
+        act.Should().NotThrow();
+
+        app.Run(_ => Task.CompletedTask);
+        using var scope = provider.CreateScope();
+        var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+
+        await app.Build()(context);
+
+        context.Items[PdndMetadataAspNetCoreConstants.HttpContextItemKey].Should().BeOfType<PdndCallerMetadata>();
+    }
+
+    [Fact]
     public void AddPdndMetadata_IsIdempotent_AndKeepsACustomExtractor()
     {
         var services = new ServiceCollection();
@@ -322,6 +345,83 @@ public sealed class FailSoftTests
 
         first.Should().Equal("for=1.1.1.1");
         second.Should().Equal("for=2.2.2.2");
+    }
+
+    [Theory]
+    [InlineData("authorization")]
+    [InlineData("Proxy-Authorization")]
+    [InlineData("cookie")]
+    public void SignedCredentialHeaders_AreNeverStored(string name)
+    {
+        var voucher = Base64UrlTestHelper.Jwt("{\"alg\":\"RS256\"}", "{\"purposeId\":\"p\"}", "sig");
+        var signature = Base64UrlTestHelper.Jwt(
+            "{\"alg\":\"RS256\"}",
+            "{\"signed_headers\":[{\"digest\":\"SHA-256=a=\"},{\"" + name + "\":\"Bearer " + voucher + "\"}]}",
+            "sig");
+
+        var md = new DefaultPdndMetadataExtractor().Extract(new PdndRequestContext
+        {
+            Method = "POST",
+            Headers = new[] { new PdndRequestHeader("Agid-JWT-Signature", new[] { signature }) }
+        }, new PdndMetadataOptions());
+
+        md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaderPrefix + "digest").Should().Be("SHA-256=a=");
+        md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaderPrefix + name.ToLowerInvariant()).Should().BeNull();
+        md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaders).Should().Contain(name.ToLowerInvariant(),
+            "the name stays listed; only the value is withheld");
+        md.Snapshot().Values.SelectMany(items => items).Should().NotContain(i => i.Value.Contains(voucher));
+    }
+
+    [Fact]
+    public void SignedHeaders_UnderAConfiguredDenyListName_AreNotStored()
+    {
+        var signature = Base64UrlTestHelper.Jwt(
+            "{\"alg\":\"RS256\"}", "{\"signed_headers\":[{\"x-api-key\":\"secret-key\"}]}", "sig");
+
+        var md = new DefaultPdndMetadataExtractor().Extract(new PdndRequestContext
+        {
+            Method = "POST",
+            Headers = new[] { new PdndRequestHeader("Agid-JWT-Signature", new[] { signature }) }
+        }, new PdndMetadataOptions());
+
+        md.GetFirstValue(PdndMetadataKeys.PdndSignatureSignedHeaderPrefix + "x-api-key").Should().BeNull();
+    }
+
+    [Fact]
+    public void SignedHeaderNames_BeyondTheBound_DoNotBecomeKeys()
+    {
+        var longName = new string('x', 300);
+        var signature = Base64UrlTestHelper.Jwt(
+            "{\"alg\":\"RS256\"}", "{\"signed_headers\":[{\"" + longName + "\":\"v\"}]}", "sig");
+
+        var md = new DefaultPdndMetadataExtractor().Extract(new PdndRequestContext
+        {
+            Method = "POST",
+            Headers = new[] { new PdndRequestHeader("Agid-JWT-Signature", new[] { signature }) }
+        }, new PdndMetadataOptions());
+
+        md.Snapshot().Keys.Should().NotContain(k => k.Length > 300);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("not-a-token")]
+    public void AnUnusableHyphenatedHeader_DoesNotHideTheOfficialTrackingEvidence(string hyphenated)
+    {
+        var evidence = Base64UrlTestHelper.Jwt("{\"alg\":\"RS256\"}", "{\"jti\":\"te-1\"}", "sig");
+
+        var md = new DefaultPdndMetadataExtractor().Extract(new PdndRequestContext
+        {
+            Method = "GET",
+            Headers = new[]
+            {
+                new PdndRequestHeader("Agid-JWT-Tracking-Evidence", new[] { hyphenated }),
+                new PdndRequestHeader("Agid-JWT-TrackingEvidence", new[] { evidence })
+            }
+        }, new PdndMetadataOptions());
+
+        md.GetFirstValue(PdndMetadataKeys.PdndTrackingJti).Should().Be("te-1");
     }
 
     [Fact]

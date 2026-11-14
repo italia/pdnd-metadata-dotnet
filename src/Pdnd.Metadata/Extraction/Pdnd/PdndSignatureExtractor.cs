@@ -12,6 +12,18 @@ namespace Pdnd.Metadata.Extraction.Pdnd;
 /// </summary>
 public static class PdndSignatureExtractor
 {
+    // Names whose signed value is a credential, withheld regardless of configuration. The
+    // default extractor additionally applies PdndMetadataOptions.HeaderDenyList.
+    private static readonly HashSet<string> CredentialHeaders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "authorization",
+        "proxy-authorization",
+        "cookie",
+        "set-cookie"
+    };
+
+    private const int MaxSignedHeaderNameLength = 256;
+
     /// <summary>
     /// Extracts header fields (alg/kid/typ) and selected payload claims if present.
     /// This method is fail-soft and never throws.
@@ -55,6 +67,17 @@ public static class PdndSignatureExtractor
                     foreach (var header in signedHeaders)
                     {
                         if (string.IsNullOrEmpty(header.Value))
+                            continue;
+
+                        // A client may sign its Authorization header. Its value is then the
+                        // voucher itself, which must never be stored. The name stays in the
+                        // signed_headers list; only the value is withheld.
+                        if (CredentialHeaders.Contains(header.Key))
+                            continue;
+
+                        // The name becomes part of a key. Real header names are short; a name
+                        // beyond this bound only makes an unbounded key.
+                        if (header.Key.Length > MaxSignedHeaderNameLength)
                             continue;
 
                         metadata.Add(

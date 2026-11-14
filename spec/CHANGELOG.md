@@ -35,7 +35,11 @@ version and their own changelog.
   belongs to AUDIT_REST_01/02; INTEGRITY_REST_02 uses `Agid-JWT-Signature`.
 - The configuration reference had not followed the 2.0.0 defaults: `CaptureAllHeaders` is
   `false`, the deny list has ten entries, and `MaxHeaderCount` and `PathExclusions` were missing.
-
+- When both tracking evidence spellings are present, `Agid-JWT-TrackingEvidence` is read first,
+  and the hyphenated one only when it is absent or blank.
+- `pdnd.signature.signed_header.<name>` is never produced for `authorization`,
+  `proxy-authorization`, `cookie`, or `set-cookie`, whose signed value is the credential itself,
+  nor for names longer than 256 characters. `signature-006` now pins this.
 - `net.forwarded_for` is built from every value of `Forwarded` (or, failing that,
   `X-Forwarded-For`), across repeated header lines, in arrival order. Proxies that append their
   own header line rather than extend the existing one were silently dropped from the chain.

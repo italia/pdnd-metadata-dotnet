@@ -116,8 +116,11 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
         // 2) Tracking evidence header (JWS/JWT)
         if (options.ParsePdndTrackingEvidence)
         {
-            var te = GetHeaderFirst(headers, PdndHeaderNames.AgidJwtTrackingEvidence)
-                     ?? GetHeaderFirst(headers, PdndHeaderNames.AgidJwtTrackingEvidenceAlt);
+            // The AgID/PDND name first; the hyphenated spelling only when that is absent or
+            // blank. A plain ?? would let an empty hyphenated header hide a valid official one.
+            var te = GetHeaderFirst(headers, PdndHeaderNames.AgidJwtTrackingEvidenceAlt);
+            if (string.IsNullOrWhiteSpace(te))
+                te = GetHeaderFirst(headers, PdndHeaderNames.AgidJwtTrackingEvidence);
 
             if (!string.IsNullOrWhiteSpace(te) &&
                 IsTokenLengthAllowed(te, options) &&
@@ -202,8 +205,16 @@ public sealed class DefaultPdndMetadataExtractor : IPdndMetadataExtractor
 
         // Copies the items directly instead of going through Snapshot(), which would build a
         // dictionary and an array per key only to be thrown away. Untruncated items are reused.
-        scratch.CopyTo(md, options.MaxValueLength, Truncate);
+        scratch.CopyTo(md, options.MaxValueLength, Truncate, key => IsDeniedSignedHeader(key, options));
     }
+
+    /// <summary>
+    /// A signed header value under a name the deny list covers is withheld, exactly as the raw
+    /// header itself would be: signing a credential header must not be a way to store it.
+    /// </summary>
+    private static bool IsDeniedSignedHeader(string key, PdndMetadataOptions options)
+        => key.StartsWith(PdndMetadataKeys.PdndSignatureSignedHeaderPrefix, StringComparison.OrdinalIgnoreCase)
+           && options.HeaderDenyList.Contains(key.Substring(PdndMetadataKeys.PdndSignatureSignedHeaderPrefix.Length));
 
     private static bool IsTokenLengthAllowed(string? token, PdndMetadataOptions options)
         => !string.IsNullOrWhiteSpace(token) && token!.Length <= options.MaxTokenLength;

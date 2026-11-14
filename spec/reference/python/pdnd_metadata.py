@@ -28,10 +28,13 @@ MAX_TOKEN_LENGTH = 16384
 
 # Header names carrying a compact JWS, mapped to the canonical key prefix for their claims.
 _TOKEN_HEADERS: list[tuple[tuple[str, ...], str]] = [
-    (("agid-jwt-tracking-evidence", "agid-jwt-trackingevidence"), "pdnd.trackingEvidence"),
+    (("agid-jwt-trackingevidence", "agid-jwt-tracking-evidence"), "pdnd.trackingEvidence"),
     (("dpop",), "pdnd.dpop"),
     (("agid-jwt-signature",), "pdnd.signature"),
 ]
+
+# Signed headers whose value is a credential. Lowercase, as signed header names are normalized.
+_CREDENTIAL_HEADERS = frozenset({"authorization", "proxy-authorization", "cookie", "set-cookie"})
 
 # Claims promoted from the JOSE header, in the order they appear in the specification.
 _JOSE_CLAIMS = ("alg", "kid", "typ")
@@ -238,7 +241,9 @@ def extract(headers: Mapping[str, str | Sequence[str]]) -> dict[str, str]:
             if pairs:
                 emit("pdnd.signature.signed_headers", ", ".join(name for name, _ in pairs))
                 for name, value in pairs:
-                    if value:
+                    # A signed credential header carries the credential itself: its value is
+                    # withheld, and names too long to be real headers do not become keys.
+                    if value and name not in _CREDENTIAL_HEADERS and len(name) <= 256:
                         emit(f"pdnd.signature.signed_header.{name}", value)
 
     authorization = lookup.get("authorization")
