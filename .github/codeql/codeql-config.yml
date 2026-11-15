@@ -1,0 +1,22 @@
+# CodeQL configuration, referenced by .github/workflows/codeql.yml.
+#
+# The security-and-quality suite runs in full, with three quality rules excluded. Each one
+# conflicts with a documented design decision of this library, so its alerts are not defects:
+# dismissing them one by one would only hide the reasoning. Security queries are never excluded.
+
+name: "Pdnd.Metadata CodeQL configuration"
+
+query-filters:
+  # The library is fail-soft by design: nothing it runs ahead of the rest of the request pipeline
+  # may fail the request (see the README, "Prestazioni e robustezza"). Each generic catch guards
+  # that contract and is covered by the tests under tests/Pdnd.Metadata.Tests/Robustness.
+  - exclude:
+      id: cs/catch-of-all-exceptions
+
+  # The per-request paths (header mapping, claim copying, signed header filtering) use explicit
+  # loops instead of LINQ on purpose, to avoid iterator and delegate allocations on every request.
+  # The changelog records the allocation reduction this buys.
+  - exclude:
+      id: cs/linq/missed-where
+  - exclude:
+      id: cs/linq/missed-select

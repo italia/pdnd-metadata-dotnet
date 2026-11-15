@@ -42,6 +42,12 @@
 
     <!-- Deterministic builds -->
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Reproducible restore: every project records the exact resolved dependency graph, with
+         content hashes, in packages.lock.json. CI restores with locked mode, so a dependency
+         that changes without a reviewed lock file update fails the build. A local restore
+         updates the lock files; Dependabot updates them along with the version it bumps. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <ItemGroup>
